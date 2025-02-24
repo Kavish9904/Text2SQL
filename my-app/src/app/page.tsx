@@ -29,10 +29,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+type MessageType = {
+  type: "user" | "bot";
+  content: string;
+  sql?: string; // Make sql optional
+};
+
+type ChatType = {
+  id: string;
+  title: string;
+  messages: MessageType[];
+};
+
 export default function WelcomePage() {
-  const [chats, setChats] = useState([{ id: 1, title: "Untitled Chat 1" }]);
-  const [activeChat, setActiveChat] = useState(1);
-  const [highestId, setHighestId] = useState(1);
+  const [chats, setChats] = useState<ChatType[]>([
+    {
+      id: "1",
+      title: "Untitled Chat",
+      messages: [],
+    },
+  ]);
+  const [activeChat, setActiveChat] = useState("1");
   const [workspaceName, setWorkspaceName] = useState("Access's workspace");
   const [isEditingWorkspace, setIsEditingWorkspace] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -43,6 +60,9 @@ export default function WelcomePage() {
   const workspaceInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [connectedDatabases, setConnectedDatabases] = useState<number>(0);
+  const [userQuery, setUserQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDatabase, setSelectedDatabase] = useState<string>("psql");
 
   useEffect(() => {
     const checkAuth = () => {
@@ -60,41 +80,55 @@ export default function WelcomePage() {
   }, [router]);
 
   useEffect(() => {
-    if (chats.length === 0) {
-      setHighestId(0);
-    } else {
-      setHighestId(Math.max(...chats.map((chat) => chat.id)));
-    }
-  }, [chats]);
-
-  useEffect(() => {
     if (isEditingWorkspace && workspaceInputRef.current) {
       workspaceInputRef.current.focus();
     }
   }, [isEditingWorkspace]);
 
   useEffect(() => {
-    // Get the connected databases count from localStorage
-    const databases = JSON.parse(
-      localStorage.getItem("connectedDatabases") || "[]"
-    );
-    setConnectedDatabases(databases.length);
+    // Check for database connection
+    const checkConnection = () => {
+      const databaseConnections = localStorage.getItem("databaseConnections");
+      console.log("databaseConnections:", databaseConnections);
+
+      if (databaseConnections) {
+        const connections = JSON.parse(databaseConnections);
+        if (connections.length > 0) {
+          setConnectedDatabases(connections.length);
+          console.log("Setting connected databases to", connections.length);
+        } else {
+          setConnectedDatabases(0);
+          console.log("Setting connected databases to 0");
+        }
+      }
+    };
+
+    checkConnection();
+    // Add event listener for storage changes
+    window.addEventListener("storage", checkConnection);
+
+    return () => {
+      window.removeEventListener("storage", checkConnection);
+    };
   }, []);
 
   const handleNewChat = () => {
-    const newId = highestId + 1;
-    setHighestId(newId);
-    const newChat = { id: newId, title: `Untitled Chat ${newId}` };
+    const newChat: ChatType = {
+      id: Date.now().toString(),
+      title: "Untitled Chat",
+      messages: [],
+    };
+
     setChats([...chats, newChat]);
-    setActiveChat(newId);
+    setActiveChat(newChat.id);
   };
 
-  const removeChat = (chatId: number, e: React.MouseEvent) => {
+  const removeChat = (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const newChats = chats.filter((chat) => chat.id !== chatId);
     setChats(newChats);
     if (newChats.length === 0) {
-      setActiveChat(0);
+      setActiveChat("0");
     } else if (activeChat === chatId) {
       setActiveChat(newChats[newChats.length - 1].id);
     }
@@ -116,9 +150,153 @@ export default function WelcomePage() {
     router.push("/login");
   };
 
+  const generateChatTitle = (message: string): string => {
+    const cleanMessage = message.trim().toLowerCase();
+
+    // Greetings should be "General Chat"
+    if (cleanMessage.match(/^(hi|hello|hey|greetings)/)) {
+      return "General Chat";
+    }
+
+    // Database queries
+    if (
+      cleanMessage.includes("select") ||
+      cleanMessage.includes("show") ||
+      cleanMessage.includes("list")
+    ) {
+      return "Data Query";
+    }
+    if (cleanMessage.includes("create") || cleanMessage.includes("make")) {
+      return "Create Query";
+    }
+    if (cleanMessage.includes("update") || cleanMessage.includes("modify")) {
+      return "Update Query";
+    }
+    if (cleanMessage.includes("delete") || cleanMessage.includes("remove")) {
+      return "Delete Query";
+    }
+    if (cleanMessage.includes("chart") || cleanMessage.includes("graph")) {
+      return "Data Visualization";
+    }
+
+    // If message is short and meaningful, use it
+    if (cleanMessage.length <= 15 && !cleanMessage.includes("?")) {
+      return message.charAt(0).toUpperCase() + cleanMessage.slice(1);
+    }
+
+    // Default to "New Query"
+    return "New Query";
+  };
+
+  const handleSendQuery = async () => {
+    if (!userQuery.trim()) return;
+
+    setIsLoading(true);
+    const newUserMessage = { type: "user" as const, content: userQuery };
+
+    // Update chat title if this is the first message
+    setChats((prevChats) =>
+      prevChats.map((chat) => {
+        if (chat.id === activeChat) {
+          const updatedMessages = [...chat.messages, newUserMessage];
+          const newTitle =
+            updatedMessages.length === 1
+              ? generateChatTitle(userQuery)
+              : chat.title;
+          return { ...chat, title: newTitle, messages: updatedMessages };
+        }
+        return chat;
+      })
+    );
+
+    try {
+      const connections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+      if (!connections.length) {
+        throw new Error(
+          "No database connection found. Please connect to a database first."
+        );
+      }
+
+      const currentDB = connections[0];
+      const response = await fetch("http://localhost:8000/api/v1/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userQuery,
+          database: currentDB.database,
+          host: currentDB.host,
+          port: currentDB.port,
+          username: currentDB.username,
+          password: currentDB.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.detail || "Failed to get response from database"
+        );
+      }
+
+      const data = await response.json();
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === activeChat
+            ? {
+                ...chat,
+                messages: [
+                  ...chat.messages,
+                  { type: "bot" as const, content: data.response },
+                ],
+              }
+            : chat
+        )
+      );
+    } catch (error) {
+      // Show error as bot message
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === activeChat
+            ? {
+                ...chat,
+                messages: [
+                  ...chat.messages,
+                  {
+                    type: "bot" as const,
+                    content: `Error: ${
+                      error instanceof Error
+                        ? error.message
+                        : "Connection failed. Please check your database connection and firewall rules."
+                    }`,
+                  },
+                ],
+              }
+            : chat
+        )
+      );
+    } finally {
+      setIsLoading(false);
+      setUserQuery("");
+    }
+  };
+
+  const getCurrentChat = () => {
+    return chats.find((chat) => chat.id === activeChat);
+  };
+
+  const handleDatabaseChange = (dbName: string) => {
+    setSelectedDatabase(dbName);
+  };
+
   if (!isAuthenticated) {
     return null; // or a loading spinner
   }
+
+  console.log("Current connectedDatabases state:", connectedDatabases);
+
+  console.log("Rendering with connectedDatabases:", connectedDatabases);
 
   return (
     <div className="min-h-screen bg-white text-black flex">
@@ -281,7 +459,7 @@ export default function WelcomePage() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          {!activeChat && (
+          {connectedDatabases === 0 ? (
             <div className="max-w-2xl mx-auto mt-20 px-4">
               <h2 className="text-gray-500 text-xl mb-2">
                 Hello {currentUser?.name}
@@ -311,36 +489,110 @@ export default function WelcomePage() {
                 </div>
               </Card>
             </div>
-          )}
-          {chats.length > 0 && activeChat !== 0 && (
-            <div className="max-w-2xl mx-auto mt-20">
-              <h2 className="text-gray-500 text-xl mb-2">
-                Hello {currentUser?.name}
-              </h2>
-              <h1 className="text-3xl font-semibold mb-8 text-black">
-                Let&apos;s get started
-              </h1>
-              <Card
-                className="hover:border-gray-300 cursor-pointer"
-                onClick={() => router.push("/connect")}
-              >
-                <div className="p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-gray-100 rounded-lg">
-                      <Grid2X2 className="h-6 w-6 text-gray-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-black mb-1">
-                        Connect your database
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        Start asking questions and create charts from your data
-                      </p>
+          ) : (
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-auto p-8">
+                {!activeChat ||
+                (activeChat && getCurrentChat()?.messages.length === 0) ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                      <h2 className="text-gray-500 text-xl mb-2">
+                        Hello {currentUser?.name}
+                      </h2>
+                      <h1 className="text-3xl sm:text-4xl font-semibold">
+                        What would you like to explore today?
+                      </h1>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <div className="max-w-3xl mx-auto space-y-4">
+                    {/* Chat Messages Container - only this part scrolls */}
+                    <div className="h-[calc(100vh-200px)] overflow-y-auto">
+                      {getCurrentChat()?.messages.map((message, index) => (
+                        <div key={index} className="space-y-2 p-2">
+                          {message.type === "user" ? (
+                            <div className="bg-gray-100 rounded-lg p-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                You asked:
+                              </div>
+                              <div className="text-gray-900">
+                                {message.content}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Response:
+                              </div>
+                              <div className="text-gray-900 whitespace-pre-wrap">
+                                {message.content}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 p-4">
+                <div className="max-w-3xl mx-auto">
+                  <div className="relative">
+                    <div className="flex gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="database"
+                            className="flex-shrink-0 w-32"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Grid2X2 className="h-4 w-4" />
+                              <span>{selectedDatabase}</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-32">
+    {JSON.parse(
+      localStorage.getItem("databaseConnections") || "[]"
+    ).map((db: { id: string; name: string }) => (
+      <DropdownMenuItem
+        key={db.id}
+        onClick={() => handleDatabaseChange(db.name)}
+        className="cursor-pointer text-black hover:bg-gray-100"
+      >
+        {db.name}
+      </DropdownMenuItem>
+    ))}
+  </DropdownMenuContent>
+                      </DropdownMenu>
+                      <div className="flex-grow relative">
+                        <Input
+                          className="w-full pr-24 py-6 text-base"
+                          placeholder="Ask a question or create a chart..."
+                          value={userQuery}
+                          onChange={(e) => setUserQuery(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendQuery();
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="default"
+                          className="absolute right-2 top-1/2 -translate-y-1/2"
+                          onClick={handleSendQuery}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? "Sending..." : "Send"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </Card>
+              </div>
             </div>
           )}
         </main>

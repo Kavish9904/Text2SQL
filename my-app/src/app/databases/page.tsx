@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/use-toast";
 
 interface DatabaseConnection {
   id: string;
@@ -43,14 +44,30 @@ export default function DatabasesPage() {
   const [databases, setDatabases] = useState<DatabaseConnection[]>([]);
   const [databaseToDelete, setDatabaseToDelete] = useState<string | null>(null);
 
+  useEffect(() => {
+    const savedConnections = JSON.parse(
+      localStorage.getItem("databaseConnections") || "[]"
+    );
+    setDatabases(savedConnections);
+    console.log("Loaded connections:", savedConnections);
+  }, []);
+
   const confirmDelete = () => {
     if (databaseToDelete) {
-      setDatabases((prevDatabases) =>
-        prevDatabases.filter((db) => db.id !== databaseToDelete)
+      const updatedDatabases = databases.filter(
+        (db) => db.id !== databaseToDelete
+      );
+      setDatabases(updatedDatabases);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(updatedDatabases)
       );
       setDatabaseToDelete(null);
+      toast("Database connection removed");
     }
   };
+
+  console.log("Current databases:", databases);
 
   if (databases.length === 0) {
     return (
@@ -100,7 +117,7 @@ export default function DatabasesPage() {
         <Button
           variant="ghost"
           onClick={() => router.push("/")}
-          className="mb-8 hover:bg-gray-100 -ml-3"
+          className="mb-8 hover:bg-gray-100 text-gray-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
@@ -126,7 +143,7 @@ export default function DatabasesPage() {
 
         <div className="space-y-4">
           {databases.map((database) => (
-            <Card key={database.id}>
+            <Card key={database.id} className="bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -171,18 +188,18 @@ export default function DatabasesPage() {
           open={!!databaseToDelete}
           onOpenChange={(open: boolean) => !open && setDatabaseToDelete(null)}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="bg-white">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-black">
+              <AlertDialogTitle className="text-gray-900">
                 Delete Database
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-black">
+              <AlertDialogDescription className="text-gray-600">
                 Are you sure you want to delete this database connection? This
                 action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="text-black">
+              <AlertDialogCancel className="border border-gray-200 bg-white text-gray-900 hover:bg-gray-100">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction

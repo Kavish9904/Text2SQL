@@ -8,15 +8,21 @@ import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
 
 export default function TursoConnectPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    displayName: "",
-    hostUrl: "",
-    authToken: "",
+    display_name: "",
+    host: "",
+    port: "5432",
+    database: "",
+    username: "",
+    password: "",
+    ip_whitelist: [] as string[],
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
+  const [testing, setTesting] = useState(false);
 
   const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
@@ -33,10 +39,42 @@ export default function TursoConnectPage() {
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTestConnection = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
+    setTesting(true);
+    console.log("Testing connection with data:", formData);
+
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formData,
+            port: parseInt(formData.port),
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
+
+      console.log("Response:", response);
+      const data = await response.json();
+      console.log("Data:", data);
+
+      if (response.ok) {
+        toast("Database connection successful!");
+      } else {
+        throw new Error(data.detail || "Connection failed");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
@@ -55,18 +93,18 @@ export default function TursoConnectPage() {
           Connect TursoDB&apos;s SQLite Database
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleTestConnection} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="displayName">
+            <Label htmlFor="display_name">
               Display Name<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
               Name of the database to be displayed in T2SQL
             </div>
             <Input
-              id="displayName"
-              name="displayName"
-              value={formData.displayName}
+              id="display_name"
+              name="display_name"
+              value={formData.display_name}
               onChange={handleInputChange}
               placeholder="My TursoDB Database"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
@@ -75,16 +113,16 @@ export default function TursoConnectPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="hostUrl">
+            <Label htmlFor="host">
               Host URL<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
               Host LibSQL URL of the SQLite database
             </div>
             <Input
-              id="hostUrl"
-              name="hostUrl"
-              value={formData.hostUrl}
+              id="host"
+              name="host"
+              value={formData.host}
               onChange={handleInputChange}
               placeholder="libsql://sequel-database.turso.io"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
@@ -93,17 +131,70 @@ export default function TursoConnectPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="authToken">
-              Auth Token<span className="text-red-500 ml-0.5">*</span>
+            <Label htmlFor="port">
+              Port<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Authentication token to connect to the database
+              Port of the database
             </div>
             <Input
-              id="authToken"
-              name="authToken"
+              id="port"
+              name="port"
+              value={formData.port}
+              onChange={handleInputChange}
+              placeholder="5432"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="database">
+              Database<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Name of the database
+            </div>
+            <Input
+              id="database"
+              name="database"
+              value={formData.database}
+              onChange={handleInputChange}
+              placeholder="sequel-database"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">
+              Username<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Username to connect to the database
+            </div>
+            <Input
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Password<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Password to connect to the database
+            </div>
+            <Input
+              id="password"
+              name="password"
               type="password"
-              value={formData.authToken}
+              value={formData.password}
               onChange={handleInputChange}
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
@@ -143,8 +234,9 @@ export default function TursoConnectPage() {
           <Button
             type="submit"
             className="w-full bg-black text-white hover:bg-gray-900"
+            disabled={testing}
           >
-            Test and Save Connection
+            {testing ? "Testing Connection..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>

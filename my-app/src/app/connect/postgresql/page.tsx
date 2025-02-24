@@ -1,16 +1,17 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Copy, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Copy, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
 
 export default function PostgresConnectPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
     displayName: "",
     hostAddress: "",
@@ -18,29 +19,87 @@ export default function PostgresConnectPage() {
     database: "",
     username: "",
     password: "",
-  })
-  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({})
+  });
+  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
+  const [testing, setTesting] = useState(false);
 
-  const ipAddresses = ["139.59.53.167", "165.22.217.42"]
+  const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const copyToClipboard = async (ip: string) => {
-    await navigator.clipboard.writeText(ip)
-    setCopiedIPs((prev) => ({ ...prev, [ip]: true }))
+    await navigator.clipboard.writeText(ip);
+    setCopiedIPs((prev) => ({ ...prev, [ip]: true }));
     setTimeout(() => {
-      setCopiedIPs((prev) => ({ ...prev, [ip]: false }))
-    }, 2000)
-  }
+      setCopiedIPs((prev) => ({ ...prev, [ip]: false }));
+    }, 2000);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle form submission here
-    console.log("Form submitted:", formData)
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTesting(true);
+
+    try {
+      // First validate the connection
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            display_name: formData.displayName,
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Connection failed");
+      }
+
+      // If connection successful, then save
+      const dbConnection = {
+        id: Date.now().toString(),
+        name: formData.displayName,
+        type: "postgresql",
+        host: formData.hostAddress,
+        port: formData.port,
+        database: formData.database,
+        username: formData.username,
+        password: formData.password,
+        lastUsed: new Date().toISOString(),
+      };
+
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      existingConnections.push(dbConnection);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(existingConnections)
+      );
+
+      toast("Database connection successful!");
+      router.push("/databases");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -61,7 +120,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="displayName">
               Display Name<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Name of the database to be displayed in T2SQL</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Name of the database to be displayed in T2SQL
+            </div>
             <Input
               id="displayName"
               name="displayName"
@@ -77,7 +138,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="hostAddress">
               Host address<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Host URL of the Postgres database</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Host URL of the Postgres database
+            </div>
             <Input
               id="hostAddress"
               name="hostAddress"
@@ -93,7 +156,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="port">
               Port<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Port at which the Postgres database is running</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Port at which the Postgres database is running
+            </div>
             <Input
               id="port"
               name="port"
@@ -108,7 +173,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="database">
               Database<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Name of the database to connect to</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Name of the database to connect to
+            </div>
             <Input
               id="database"
               name="database"
@@ -124,7 +191,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="username">
               Username<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Username to connect to the database</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Username to connect to the database
+            </div>
             <Input
               id="username"
               name="username"
@@ -140,7 +209,9 @@ export default function PostgresConnectPage() {
             <Label htmlFor="password">
               Password<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Password to connect to the database</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Password to connect to the database
+            </div>
             <Input
               id="password"
               name="password"
@@ -171,19 +242,26 @@ export default function PostgresConnectPage() {
                     onClick={() => copyToClipboard(ip)}
                     className="h-8 w-8 text-gray-500 hover:text-gray-900"
                   >
-                    {copiedIPs[ip] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedIPs[ip] ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               ))}
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-black text-white hover:bg-gray-900">
-            Test and Save Connection
+          <Button
+            type="submit"
+            className="w-full bg-black text-white hover:bg-gray-900"
+            disabled={testing}
+          >
+            {testing ? "Testing Connection..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>
     </div>
-  )
+  );
 }
-
