@@ -1,43 +1,97 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Copy, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Copy, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "react-hot-toast";
+import { DatabaseConnection } from "@/types/database";
 
 export default function MotherDuckConnectPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
     displayName: "",
     token: "",
     database: "",
-  })
-  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({})
+  });
+  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
+  const [testing, setTesting] = useState(false);
 
-  const ipAddresses = ["139.59.53.167", "165.22.217.42"]
+  const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const copyToClipboard = async (ip: string) => {
-    await navigator.clipboard.writeText(ip)
-    setCopiedIPs((prev) => ({ ...prev, [ip]: true }))
+    await navigator.clipboard.writeText(ip);
+    setCopiedIPs((prev) => ({ ...prev, [ip]: true }));
     setTimeout(() => {
-      setCopiedIPs((prev) => ({ ...prev, [ip]: false }))
-    }, 2000)
-  }
+      setCopiedIPs((prev) => ({ ...prev, [ip]: false }));
+    }, 2000);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle form submission here
-    console.log("Form submitted:", formData)
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTesting(true);
+
+    try {
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: DatabaseConnection) =>
+          conn.type === "motherduck" && conn.database === formData.database
+      );
+
+      if (isDuplicate) {
+        toast.error("This database is already connected");
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            display_name: formData.displayName,
+            type: "motherduck",
+            token: formData.token,
+            database: formData.database,
+            host: "",
+            port: 0,
+            username: "",
+            password: "",
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Connection failed");
+      }
+
+      toast.success("Database connection successful!");
+      router.push("/databases");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -51,14 +105,18 @@ export default function MotherDuckConnectPage() {
           Back to Integrations
         </Button>
 
-        <h1 className="text-2xl font-bold mb-8">Connect MotherDuck DuckDB Database</h1>
+        <h1 className="text-2xl font-bold mb-8">
+          Connect MotherDuck DuckDB Database
+        </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="displayName">
               Display Name<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Name of the database to be displayed in T2SQL</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Name of the database to be displayed in T2SQL
+            </div>
             <Input
               id="displayName"
               name="displayName"
@@ -74,7 +132,9 @@ export default function MotherDuckConnectPage() {
             <Label htmlFor="token">
               MotherDuck Token<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">Your MotherDuck token to connect to the database</div>
+            <div className="text-sm text-gray-500 mb-1">
+              Your MotherDuck token to connect to the database
+            </div>
             <Input
               id="token"
               name="token"
@@ -90,7 +150,9 @@ export default function MotherDuckConnectPage() {
             <Label htmlFor="database">
               Database<span className="text-red-500 ml-0.5">*</span>
             </Label>
-            <div className="text-sm text-gray-500 mb-1">MotherDuck database you want to connect</div>
+            <div className="text-sm text-gray-500 mb-1">
+              MotherDuck database you want to connect
+            </div>
             <Input
               id="database"
               name="database"
@@ -121,19 +183,26 @@ export default function MotherDuckConnectPage() {
                     onClick={() => copyToClipboard(ip)}
                     className="h-8 w-8 text-gray-500 hover:text-gray-900"
                   >
-                    {copiedIPs[ip] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedIPs[ip] ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               ))}
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-black text-white hover:bg-gray-900">
-            Test and Save Connection
+          <Button
+            type="submit"
+            className="w-full bg-black text-white hover:bg-gray-900"
+            disabled={testing}
+          >
+            {testing ? "Testing..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>
     </div>
-  )
+  );
 }
-

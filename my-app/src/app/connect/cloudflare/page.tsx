@@ -8,6 +8,8 @@ import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "react-hot-toast";
+import { DatabaseConnection } from "@/types/database";
 
 export default function CloudflareConnectPage() {
   const router = useRouter();
@@ -18,6 +20,7 @@ export default function CloudflareConnectPage() {
     apiToken: "",
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
+  const [testing, setTesting] = useState(false);
 
   const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
@@ -34,10 +37,80 @@ export default function CloudflareConnectPage() {
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
+    setTesting(true);
+
+    try {
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: DatabaseConnection) =>
+          conn.type === "cloudflare" &&
+          conn.accountId === formData.accountId &&
+          conn.databaseId === formData.databaseId
+      );
+
+      if (isDuplicate) {
+        toast.error("This database is already connected");
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            display_name: formData.displayName,
+            type: "cloudflare",
+            account_id: formData.accountId,
+            database_id: formData.databaseId,
+            api_token: formData.apiToken,
+            ip_whitelist: ipAddresses,
+            // Required fields but not used for Cloudflare
+            host: "",
+            port: 0,
+            database: "",
+            username: "",
+            password: "",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Connection failed");
+      }
+
+      // Save to localStorage
+      const dbConnection = {
+        id: Date.now().toString(),
+        name: formData.displayName,
+        type: "cloudflare",
+        accountId: formData.accountId,
+        databaseId: formData.databaseId,
+        apiToken: formData.apiToken,
+        lastUsed: new Date().toISOString(),
+      };
+
+      existingConnections.push(dbConnection);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(existingConnections)
+      );
+
+      toast.success("Database connection successful!");
+      router.push("/databases");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
+    }
   };
 
   return (
@@ -162,8 +235,9 @@ export default function CloudflareConnectPage() {
           <Button
             type="submit"
             className="w-full bg-black text-white hover:bg-gray-900"
+            disabled={testing}
           >
-            Test and Save Connection
+            {testing ? "Testing..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>

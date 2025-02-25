@@ -8,6 +8,8 @@ import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { DatabaseConnection } from "@/types/database";
 
 export default function ClickHouseConnectPage() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function ClickHouseConnectPage() {
     password: "",
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
+  const [testing, setTesting] = useState(false);
 
   const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
@@ -35,10 +38,62 @@ export default function ClickHouseConnectPage() {
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
+    setTesting(true);
+
+    try {
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: DatabaseConnection) =>
+          conn.type === "clickhouse" &&
+          conn.host === formData.hostAddress &&
+          conn.port === parseInt(formData.port)
+      );
+
+      if (isDuplicate) {
+        toast.error("This database is already connected");
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            display_name: formData.displayName,
+            type: "clickhouse",
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
+            username: formData.username,
+            password: formData.password,
+            database: "",
+            ssl: true,
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Connection failed");
+      }
+
+      toast.success("Database connection successful!");
+      router.push("/databases");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
@@ -177,8 +232,9 @@ export default function ClickHouseConnectPage() {
           <Button
             type="submit"
             className="w-full bg-black text-white hover:bg-gray-900"
+            disabled={testing}
           >
-            Test and Save Connection
+            {testing ? "Testing..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>
