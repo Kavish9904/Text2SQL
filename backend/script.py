@@ -3,9 +3,10 @@ import psycopg2
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()
+# load_dotenv()
 
 def fetch_api_key():
+    load_dotenv()
     api_key = os.getenv("OPENAI_APIKEY")
     if not api_key:
         raise ValueError("API key not found in the environment.")
@@ -13,6 +14,7 @@ def fetch_api_key():
 
 
 def fetch_credentials():
+    load_dotenv()
     credentials = {
         'PGHOST': os.getenv('PGHOST'),
         'PGUSER': os.getenv('PGUSER'),
@@ -85,12 +87,16 @@ def execute_query(connection, query):
         cursor = connection.cursor()
         cursor.execute(query)
         results = cursor.fetchall()
-        # for row in results:
-        #     print(row)
+        for row in results:
+            print(row)
         return results
     except Exception as e:
         print(f"Error executing query: {str(e)}")
         return None
+
+
+def close_connection(connection):
+    connection.close()
     
 
 def generate_sql_query(natural_language_query, metadata, client, DB_NAME="PostgreSQL"):
@@ -98,13 +104,13 @@ def generate_sql_query(natural_language_query, metadata, client, DB_NAME="Postgr
         f"Table {table}: " + ", ".join(f"{col[0]} ({col[1]})" for col in columns)
         for table, columns in metadata.items()
     )
-    print(metadata_description)
-    print("--------------------------------")
+    # print(metadata_description)
     try:
         prompt = f"You are a helpful assistant that converts natural language queries into {DB_NAME} queries. You must only return the {DB_NAME} query, nothing else. Here is the database schema:\n{metadata_description}"
         task = f"Convert the following natural language query into a valid {DB_NAME} query:\n{natural_language_query}\nEnsure the query is compatible with {DB_NAME} syntax."
-        print(prompt)
-        print(task)
+        print(prompt+task)
+        print("--------------------------------")
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -151,5 +157,5 @@ def main():
             connection.close()
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
