@@ -50,23 +50,6 @@ export default function MySQLConnectPage() {
     setTesting(true);
 
     try {
-      const existingConnections = JSON.parse(
-        localStorage.getItem("databaseConnections") || "[]"
-      );
-
-      const isDuplicate = existingConnections.some(
-        (conn: DatabaseConnection) =>
-          conn.type === "mysql" &&
-          conn.host === formData.hostAddress &&
-          conn.port === parseInt(formData.port) &&
-          conn.database === formData.database
-      );
-
-      if (isDuplicate) {
-        toast.error("This database is already connected");
-        return;
-      }
-
       const response = await fetch(
         "http://localhost:8000/api/test-connection",
         {
@@ -75,27 +58,41 @@ export default function MySQLConnectPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            type: "mysql",
             display_name: formData.displayName,
             host: formData.hostAddress,
             port: parseInt(formData.port),
             database: formData.database,
             username: formData.username,
             password: formData.password,
-            type: "mysql",
-            ssl: true, // Simplified SSL config - just tell backend to use SSL
             ip_whitelist: ipAddresses,
           }),
         }
       );
 
-      const data = await response.json();
-
       if (!response.ok) {
-        const errorMessage = data.detail || "Connection failed";
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
-      // Save successful connection
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: any) =>
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username &&
+          conn.type === "mysql"
+      );
+
+      if (isDuplicate) {
+        throw new Error("Database Connection Already Exists");
+      }
+
+      // If no duplicate, proceed with saving
       const dbConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
@@ -105,7 +102,6 @@ export default function MySQLConnectPage() {
         database: formData.database,
         username: formData.username,
         password: formData.password,
-        ssl: formData.ssl,
         lastUsed: new Date().toISOString(),
       };
 
@@ -119,9 +115,7 @@ export default function MySQLConnectPage() {
       router.push("/databases");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to connect to database"
-      );
+      toast.error(error instanceof Error ? error.message : "Connection failed");
     } finally {
       setTesting(false);
     }

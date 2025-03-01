@@ -29,14 +29,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface DatabaseConnection {
   id: string;
   name: string;
   type: string;
   host: string;
-  lastUsed: string;
 }
 
 export default function DatabasesPage() {
@@ -45,11 +44,19 @@ export default function DatabasesPage() {
   const [databaseToDelete, setDatabaseToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedConnections = JSON.parse(
-      localStorage.getItem("databaseConnections") || "[]"
-    );
-    setDatabases(savedConnections);
-    console.log("Loaded connections:", savedConnections);
+    console.log("Current path:", window.location.pathname);
+    try {
+      const savedConnections = localStorage.getItem("databaseConnections");
+      console.log("Saved connections:", savedConnections);
+      if (savedConnections) {
+        const connections = JSON.parse(savedConnections);
+        setDatabases(connections);
+        console.log("Loaded connections:", connections);
+      }
+    } catch (error) {
+      console.error("Error loading connections:", error);
+      setDatabases([]);
+    }
   }, []);
 
   const confirmDelete = () => {
@@ -63,11 +70,15 @@ export default function DatabasesPage() {
         JSON.stringify(updatedDatabases)
       );
       setDatabaseToDelete(null);
-      toast("Database connection removed");
+      toast.success("Database connection removed");
     }
   };
 
   console.log("Current databases:", databases);
+
+  const handleAddDatabase = () => {
+    router.push("/connect");
+  };
 
   if (databases.length === 0) {
     return (
@@ -97,7 +108,7 @@ export default function DatabasesPage() {
                 </p>
               </div>
               <Button
-                onClick={() => router.push("/connect")}
+                onClick={handleAddDatabase}
                 size="lg"
                 className="mt-6 bg-black text-white hover:bg-gray-800"
               >
@@ -133,7 +144,7 @@ export default function DatabasesPage() {
             </p>
           </div>
           <Button
-            onClick={() => router.push("/connect")}
+            onClick={handleAddDatabase}
             className="bg-black text-white hover:bg-gray-800"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -171,7 +182,9 @@ export default function DatabasesPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600"
-                        onSelect={() => setDatabaseToDelete(database.id)}
+                        onClick={() => {
+                          setDatabaseToDelete(database.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete

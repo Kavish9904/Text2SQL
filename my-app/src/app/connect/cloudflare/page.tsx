@@ -18,6 +18,11 @@ export default function CloudflareConnectPage() {
     accountId: "",
     databaseId: "",
     apiToken: "",
+    hostAddress: "",
+    port: "",
+    database: "",
+    username: "",
+    password: "",
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
   const [testing, setTesting] = useState(false);
@@ -42,22 +47,6 @@ export default function CloudflareConnectPage() {
     setTesting(true);
 
     try {
-      const existingConnections = JSON.parse(
-        localStorage.getItem("databaseConnections") || "[]"
-      );
-
-      const isDuplicate = existingConnections.some(
-        (conn: DatabaseConnection) =>
-          conn.type === "cloudflare" &&
-          conn.accountId === formData.accountId &&
-          conn.databaseId === formData.databaseId
-      );
-
-      if (isDuplicate) {
-        toast.error("This database is already connected");
-        return;
-      }
-
       const response = await fetch(
         "http://localhost:8000/api/test-connection",
         {
@@ -66,36 +55,52 @@ export default function CloudflareConnectPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            display_name: formData.displayName,
             type: "cloudflare",
-            account_id: formData.accountId,
-            database_id: formData.databaseId,
-            api_token: formData.apiToken,
+            display_name: formData.displayName,
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
             ip_whitelist: ipAddresses,
-            // Required fields but not used for Cloudflare
-            host: "",
-            port: 0,
-            database: "",
-            username: "",
-            password: "",
           }),
         }
       );
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || "Connection failed");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
-      // Save to localStorage
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: any) =>
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username &&
+          conn.type === "cloudflare"
+      );
+
+      if (isDuplicate) {
+        throw new Error(
+          "Database Connection Already Exists"
+        );
+      }
+
+      // If no duplicate, proceed with saving
       const dbConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "cloudflare",
-        accountId: formData.accountId,
-        databaseId: formData.databaseId,
-        apiToken: formData.apiToken,
+        host: formData.hostAddress,
+        port: formData.port,
+        database: formData.database,
+        username: formData.username,
+        password: formData.password,
         lastUsed: new Date().toISOString(),
       };
 
@@ -110,6 +115,8 @@ export default function CloudflareConnectPage() {
     } catch (error) {
       console.error("Error:", error);
       toast.error(error instanceof Error ? error.message : "Connection failed");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -196,6 +203,96 @@ export default function CloudflareConnectPage() {
               name="apiToken"
               type="password"
               value={formData.apiToken}
+              onChange={handleInputChange}
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hostAddress">
+              Host Address<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your Cloudflare D1 database host address
+            </div>
+            <Input
+              id="hostAddress"
+              name="hostAddress"
+              value={formData.hostAddress}
+              onChange={handleInputChange}
+              placeholder="Host address"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="port">
+              Port<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your Cloudflare D1 database port
+            </div>
+            <Input
+              id="port"
+              name="port"
+              value={formData.port}
+              onChange={handleInputChange}
+              placeholder="Port"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="database">
+              Database<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your Cloudflare D1 database name
+            </div>
+            <Input
+              id="database"
+              name="database"
+              value={formData.database}
+              onChange={handleInputChange}
+              placeholder="Database name"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">
+              Username<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your Cloudflare D1 database username
+            </div>
+            <Input
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              placeholder="Username"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Password<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your Cloudflare D1 database password
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
               onChange={handleInputChange}
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required

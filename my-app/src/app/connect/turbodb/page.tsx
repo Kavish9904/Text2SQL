@@ -45,22 +45,6 @@ export default function TursoConnectPage() {
     setTesting(true);
 
     try {
-      const existingConnections = JSON.parse(
-        localStorage.getItem("databaseConnections") || "[]"
-      );
-
-      const isDuplicate = existingConnections.some(
-        (conn: DatabaseConnection) =>
-          conn.type === "turbodb" &&
-          conn.host === formData.host &&
-          conn.database === formData.database
-      );
-
-      if (isDuplicate) {
-        toast.error("This database is already connected");
-        return;
-      }
-
       const response = await fetch(
         "http://localhost:8000/api/test-connection",
         {
@@ -69,24 +53,58 @@ export default function TursoConnectPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            display_name: formData.display_name,
             type: "turbodb",
+            display_name: formData.display_name,
             host: formData.host,
             port: parseInt(formData.port),
             database: formData.database,
             username: formData.username,
             password: formData.password,
-            ssl: false,
             ip_whitelist: ipAddresses,
           }),
         }
       );
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || "Connection failed");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
+
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: any) =>
+          conn.host === formData.host &&
+          conn.database === formData.database &&
+          conn.username === formData.username &&
+          conn.type === "turbodb"
+      );
+
+      if (isDuplicate) {
+        throw new Error("Database Connection Already Exists");
+      }
+
+      // If no duplicate, proceed with saving
+      const dbConnection = {
+        id: Date.now().toString(),
+        name: formData.display_name,
+        type: "turbodb",
+        host: formData.host,
+        port: formData.port,
+        database: formData.database,
+        username: formData.username,
+        password: formData.password,
+        lastUsed: new Date().toISOString(),
+      };
+
+      existingConnections.push(dbConnection);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(existingConnections)
+      );
 
       toast.success("Database connection successful!");
       router.push("/databases");

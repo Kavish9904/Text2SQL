@@ -13,12 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<{
-    username: string;
     name: string;
     email: string;
     bio: string;
   } | null>(null);
-  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("");
@@ -33,7 +31,6 @@ export default function ProfilePage() {
       router.push("/login");
     } else {
       setUser(currentUser);
-      setUsername(currentUser.username || "");
       setName(currentUser.name);
       setEmail(currentUser.email);
       setBio(currentUser.bio || "");
@@ -42,7 +39,7 @@ export default function ProfilePage() {
 
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedUser = { ...user, username, name, email, bio };
+    const updatedUser = { ...user, name, email, bio };
     localStorage.setItem("currentUser", JSON.stringify(updatedUser));
     // Update the user in the "users" array as well
     const users = JSON.parse(localStorage.getItem("users") || "[]");
@@ -105,25 +102,6 @@ export default function ProfilePage() {
               <TabsContent value="profile">
                 <form onSubmit={handleProfileSubmit}>
                   <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="username"
-                        className="block text-sm font-medium text-black"
-                      >
-                        Username
-                      </label>
-                      <div className="mt-1 relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <User className="h-5 w-5 text-black" />
-                        </div>
-                        <Input
-                          id="username"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          className="pl-10 text-black"
-                        />
-                      </div>
-                    </div>
                     <div>
                       <label
                         htmlFor="name"

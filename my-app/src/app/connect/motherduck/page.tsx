@@ -17,6 +17,10 @@ export default function MotherDuckConnectPage() {
     displayName: "",
     token: "",
     database: "",
+    hostAddress: "",
+    port: "",
+    username: "",
+    password: "",
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
   const [testing, setTesting] = useState(false);
@@ -41,21 +45,6 @@ export default function MotherDuckConnectPage() {
     setTesting(true);
 
     try {
-      // Check for duplicate connections
-      const existingConnections = JSON.parse(
-        localStorage.getItem("databaseConnections") || "[]"
-      );
-
-      const isDuplicate = existingConnections.some(
-        (conn: DatabaseConnection) =>
-          conn.type === "motherduck" && conn.database === formData.database
-      );
-
-      if (isDuplicate) {
-        toast.error("This database is already connected");
-        return;
-      }
-
       const response = await fetch(
         "http://localhost:8000/api/test-connection",
         {
@@ -64,24 +53,60 @@ export default function MotherDuckConnectPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            display_name: formData.displayName,
             type: "motherduck",
-            token: formData.token,
+            display_name: formData.displayName,
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
             database: formData.database,
-            host: "",
-            port: 0,
-            username: "",
-            password: "",
+            username: formData.username,
+            password: formData.password,
             ip_whitelist: ipAddresses,
           }),
         }
       );
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || "Connection failed");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
+
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: any) =>
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username &&
+          conn.type === "motherduck"
+      );
+
+      if (isDuplicate) {
+        throw new Error(
+          "A connection to this MotherDuck database already exists"
+        );
+      }
+
+      // If no duplicate, proceed with saving
+      const dbConnection = {
+        id: Date.now().toString(),
+        name: formData.displayName,
+        type: "motherduck",
+        host: formData.hostAddress,
+        port: formData.port,
+        database: formData.database,
+        username: formData.username,
+        password: formData.password,
+        lastUsed: new Date().toISOString(),
+      };
+
+      existingConnections.push(dbConnection);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(existingConnections)
+      );
 
       toast.success("Database connection successful!");
       router.push("/databases");
@@ -159,6 +184,78 @@ export default function MotherDuckConnectPage() {
               value={formData.database}
               onChange={handleInputChange}
               placeholder="my_database"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hostAddress">
+              Host Address<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              The host address of the database
+            </div>
+            <Input
+              id="hostAddress"
+              name="hostAddress"
+              value={formData.hostAddress}
+              onChange={handleInputChange}
+              placeholder="127.0.0.1"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="port">
+              Port<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              The port of the database
+            </div>
+            <Input
+              id="port"
+              name="port"
+              value={formData.port}
+              onChange={handleInputChange}
+              placeholder="3306"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">
+              Username<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              The username to connect to the database
+            </div>
+            <Input
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              placeholder="root"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Password<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              The password to connect to the database
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleInputChange}
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />

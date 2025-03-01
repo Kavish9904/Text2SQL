@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { DatabaseConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { DatabaseConnection } from "@/types/database";
 
 export default function PostgresConnectPage() {
   const router = useRouter();
@@ -44,24 +44,6 @@ export default function PostgresConnectPage() {
     setTesting(true);
 
     try {
-      const existingConnections = JSON.parse(
-        localStorage.getItem("databaseConnections") || "[]"
-      );
-
-      const isDuplicate = existingConnections.some(
-        (conn: DatabaseConnection) =>
-          conn.type === "postgresql" &&
-          conn.host === formData.hostAddress &&
-          conn.port === parseInt(formData.port) &&
-          conn.database === formData.database
-      );
-
-      if (isDuplicate) {
-        toast.error("This database is already connected");
-        return;
-      }
-
-      // First validate the connection
       const response = await fetch(
         "http://localhost:8000/api/test-connection",
         {
@@ -70,6 +52,7 @@ export default function PostgresConnectPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            type: "postgresql",
             display_name: formData.displayName,
             host: formData.hostAddress,
             port: parseInt(formData.port),
@@ -82,11 +65,27 @@ export default function PostgresConnectPage() {
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Connection failed");
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
-      // If connection successful, then save
+      // Check for duplicate connections
+      const existingConnections = JSON.parse(
+        localStorage.getItem("databaseConnections") || "[]"
+      );
+
+      const isDuplicate = existingConnections.some(
+        (conn: any) =>
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username
+      );
+
+      if (isDuplicate) {
+        throw new Error("Database Connection Already Exists");
+      }
+
+      // If no duplicate, proceed with saving
       const dbConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
