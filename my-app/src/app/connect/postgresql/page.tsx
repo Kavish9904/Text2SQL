@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,12 +70,12 @@ export default function PostgresConnectPage() {
       }
 
       // Check for duplicate connections
-      const existingConnections = JSON.parse(
+      const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
-        (conn: any) =>
+        (conn: DatabaseConnection) =>
           conn.host === formData.hostAddress &&
           conn.database === formData.database &&
           conn.username === formData.username
@@ -86,12 +86,12 @@ export default function PostgresConnectPage() {
       }
 
       // If no duplicate, proceed with saving
-      const dbConnection = {
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "postgresql",
         host: formData.hostAddress,
-        port: formData.port,
+        port: parseInt(formData.port),
         database: formData.database,
         username: formData.username,
         password: formData.password,

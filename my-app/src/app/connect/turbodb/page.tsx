@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 export default function TursoConnectPage() {
   const router = useRouter();
@@ -71,16 +71,15 @@ export default function TursoConnectPage() {
       }
 
       // Check for duplicate connections
-      const existingConnections = JSON.parse(
+      const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
-        (conn: any) =>
+        (conn: DatabaseConnection) =>
           conn.host === formData.host &&
           conn.database === formData.database &&
-          conn.username === formData.username &&
-          conn.type === "turbodb"
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
@@ -88,12 +87,12 @@ export default function TursoConnectPage() {
       }
 
       // If no duplicate, proceed with saving
-      const dbConnection = {
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.display_name,
         type: "turbodb",
         host: formData.host,
-        port: formData.port,
+        port: parseInt(formData.port),
         database: formData.database,
         username: formData.username,
         password: formData.password,

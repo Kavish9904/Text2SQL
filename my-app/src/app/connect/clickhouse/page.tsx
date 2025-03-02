@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 export default function ClickHouseConnectPage() {
   const router = useRouter();
@@ -70,16 +70,15 @@ export default function ClickHouseConnectPage() {
       }
 
       // Check for duplicate connections
-      const existingConnections = JSON.parse(
+      const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
-        (conn: any) =>
+        (conn: DatabaseConnection) =>
           conn.host === formData.hostAddress &&
           conn.database === formData.database &&
-          conn.username === formData.username &&
-          conn.type === "clickhouse"
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
@@ -87,12 +86,12 @@ export default function ClickHouseConnectPage() {
       }
 
       // If no duplicate, proceed with saving
-      const dbConnection = {
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "clickhouse",
         host: formData.hostAddress,
-        port: formData.port,
+        port: parseInt(formData.port),
         database: formData.database,
         username: formData.username,
         password: formData.password,
