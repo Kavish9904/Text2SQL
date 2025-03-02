@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 export default function MySQLConnectPage() {
   const router = useRouter();
@@ -76,16 +76,15 @@ export default function MySQLConnectPage() {
       }
 
       // Check for duplicate connections
-      const existingConnections = JSON.parse(
+      const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
-        (conn: any) =>
+        (conn: DatabaseConnection) =>
           conn.host === formData.hostAddress &&
           conn.database === formData.database &&
-          conn.username === formData.username &&
-          conn.type === "mysql"
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
@@ -93,12 +92,12 @@ export default function MySQLConnectPage() {
       }
 
       // If no duplicate, proceed with saving
-      const dbConnection = {
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "mysql",
         host: formData.hostAddress,
-        port: formData.port,
+        port: parseInt(formData.port),
         database: formData.database,
         username: formData.username,
         password: formData.password,

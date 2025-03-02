@@ -7,4 +7,5 @@ export type DatabaseConnection = {
   database: string;
   username: string;
   password: string;
+  lastUsed: string;
 };

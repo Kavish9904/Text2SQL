@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "react-hot-toast";
-import { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 export default function CloudflareConnectPage() {
   const router = useRouter();
@@ -73,31 +73,28 @@ export default function CloudflareConnectPage() {
       }
 
       // Check for duplicate connections
-      const existingConnections = JSON.parse(
+      const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
-        (conn: any) =>
+        (conn: DatabaseConnection) =>
           conn.host === formData.hostAddress &&
           conn.database === formData.database &&
-          conn.username === formData.username &&
-          conn.type === "cloudflare"
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
-        throw new Error(
-          "Database Connection Already Exists"
-        );
+        throw new Error("Database Connection Already Exists");
       }
 
       // If no duplicate, proceed with saving
-      const dbConnection = {
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "cloudflare",
         host: formData.hostAddress,
-        port: formData.port,
+        port: parseInt(formData.port),
         database: formData.database,
         username: formData.username,
         password: formData.password,

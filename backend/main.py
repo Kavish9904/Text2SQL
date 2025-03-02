@@ -11,8 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # from datetime import datetime, timedelta
 
 from pydantic import BaseModel
-import psycopg2
-import urllib.parse
+from typing import Optional, Literal, List
+import mysql.connector
+from mysql.connector import Error
+import duckdb
+import clickhouse_driver
 import requests
 import json
 from script import * # fetch_api_key, fetch_credentials, create_db_connection, fetch_table_metadata, generate_sql_query, execute_query, determine_db_type
@@ -46,8 +49,15 @@ class QueryRequest(BaseModel):
     username: str
     password: str
 
-global_conn = None
-global_connstr = None
+# Add these models
+class Message(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[Message]
+
 @app.post("/api/test-connection")
 async def test_connection(connection: DatabaseConnection):
     try:
@@ -95,195 +105,124 @@ async def test_connection(connection: DatabaseConnection):
 @app.post("/api/v1/query")
 async def handle_query(query_request: QueryRequest):
     try:
-        query = query_request.query.strip()
-        print("QUERY:", query)
-        # print("QUERY REQUEST:", query_request)
-        api_key = fetch_api_key()
-        # print("API KEY:", api_key)
-
-        # Create OpenAI client
-        client = OpenAI(api_key=api_key)
-
-        # if not connected to the database, connect to the database
-        if not global_conn:
-            connection = psycopg2.connect(global_connstr)
-        else:
-            connection = global_conn
-        # print("OPEN AI CLIENT:", connection)
-        if not connection:
-            raise HTTPException(status_code=500, detail="Failed to connect to the database.")
-        # print("CONNECTION:", connection)
-        # Fetch metadata
-        metadata = fetch_table_metadata(connection)
-        # print("METADATA:", metadata)
-
-        # Generate SQL query
-        # if chat history is not empty then for the next time, use the chat history
-        # global session_started
-        # if not session_started:
-        #     chat_history = []
-        #     session_started = True
+        query = query_request.query.lower().strip()
         
-        query, database_related_query = generate_sql_query(query, metadata, client, determine_db_type(connection))
-        
-        print("SQL QUERY:", query)
-        if not query:
-            raise HTTPException(status_code=400, detail="Failed to generate SQL query.")
-
-        if not database_related_query:
+        # Handle conversational queries first
+        if any(word in query for word in ["hi", "hello", "hey", "greetings"]):
             return {
-                "response": query,
+                "response": "Hello! I'm your database assistant. How can I help you today?",
                 "sql": None,
-                "results": None
+                "data": None
             }
-        
-        # Execute SQL query
-        # results, column_names = execute_query(connection, query)
-        results = query
-        # print("RESULTS:", results)
-        if results is None:
-            raise HTTPException(status_code=400, detail="Failed to execute SQL query.")
-        
-        # Format the response
-        # item = results[0]
-        # table_html = (
-        #     "<table border='1'>"
-        #     "<tr><th>item_id</th><th>item_name</th><th>description</th><th>quantity</th><th>unit_price</th><th>supplier</th></tr>"
-        #     f"<tr><td>{item['item_id']}</td><td>{item['item_name']}</td><td>{item['description']}</td>"
-        #     f"<td>{item['quantity']}</td><td>{item['unit_price']:.2f}</td><td>{item['supplier']}</td></tr>"
-        #     "</table>"
-        # )
-        # print("TABLE HTML:", table_html)
-        # response_message = (
-        #     f"Query executed successfully. Let me retrieve the most expensive item from your inventory database.<br><br>"
-        #     f"{table_html}<br><br>"
-        #     f"The most expensive item in your inventory is a {item['description']} {item['item_name']} "
-        #     f"priced at <b>${item['unit_price']:.2f}</b>.<br><br>"
-        #     f"This {item['item_name']} is supplied by {item['supplier']}, and you currently have "
-        #     f"{item['quantity']} units in stock."
-        # )
-        # print("RESPONSE MESSAGE:", response_message)
+            
+        # How are you
+        elif any(phrase in query for phrase in ["how are you", "how're you", "how you doing"]):
+            phrase = query  # or however you want to define the phrase variable
+            response = f"I understand you want to {phrase}. Let me help you with that."
+            return {
+                "response": response,
+                "sql": None,
+                "data": None
+            }
+            
+        # Thank you
+        elif any(phrase in query for phrase in ["thank you", "thanks", "thx"]):
+            return {
+                "response": "You're welcome! Let me know if you need anything else.",
+                "sql": None,
+                "data": None
+            }
+            
+        # Help or what can you do
+        elif any(phrase in query for word in ["help", "what can you do", "capabilities"]):
+            return {
+                "response": """I can help you with several things:
+1. Answer questions about your database
+2. Show available tables and their contents
+3. Help you query specific data
+4. Create visualizations of your data
 
+What would you like to know more about?""",
+                "sql": None,
+                "data": None
+            }
+            
+        # Goodbye
+        elif any(word in query for word in ["bye", "goodbye", "see you", "cya"]):
+            return {
+                "response": "Goodbye! Have a great day!",
+                "sql": None,
+                "data": None
+            }
 
-        return {
-            "response": results,
-            "sql": query,
-            "results": results
-        }
-
-        
-        # # Greetings
-        # if any(word in query for word in ["hi", "hello", "hey", "greetings"]):
-        #     return {
-        #         "response": "Hello! I'm your database assistant. How can I help you today?",
-        #         "sql": None
-        #     }
+        # If not a conversational query, try to execute the database query
+        try:
+            # Create PostgreSQL connection
+            conn = await asyncpg.connect(
+                user=query_request.username,
+                password=query_request.password,
+                database=query_request.database,
+                host=query_request.host,
+                port=query_request.port
+            )
             
-        # # How are you
-        # elif any(phrase in query for phrase in ["how are you", "how're you", "how you doing"]):
-        #     return {
-        #         "response": "I'm doing well, thank you for asking! How can I assist you with your database queries?",
-        #         "sql": None
-        #     }
+            # Execute the query
+            result = await conn.fetch(query)
+            await conn.close()
             
-        # # Thank you
-        # elif any(phrase in query for phrase in ["thank you", "thanks", "thx"]):
-        #     return {
-        #         "response": "You're welcome! Let me know if you need anything else.",
-        #         "sql": None
-        #     }
+            # Convert result to JSON-serializable format
+            formatted_result = [dict(row) for row in result]
             
-        # # Help or what can you do
-        # elif any(phrase in query for phrase in ["help", "what can you do", "capabilities"]):
-        #     return {
-        #         "response": """I can help you with several things:
-        #                 1. Answer questions about your database
-        #                 2. Show available tables and their contents
-        #                 3. Help you query specific data
-        #                 4. Create visualizations of your data
-
-        #                 What would you like to know more about?""",
-        #         "sql": None
-        #     }
+            return {
+                "response": "Query executed successfully",
+                "sql": query,
+                "data": formatted_result
+            }
             
-        # # Goodbye
-        # elif any(word in query for word in ["bye", "goodbye", "see you", "cya"]):
-        #     return {
-        #         "response": "Goodbye! Have a great day!",
-        #         "sql": None
-        #     }
-            
-        # # Default response
-        # else:
-        #     return {
-        #         "response": "I understand you want to interact with the database. You can start by asking for 'help' to see what I can do.",
-        #         "sql": None
-        #     }
+        except Exception as db_error:
+            print(f"Database error: {str(db_error)}")  # Add logging
+            return {
+                "response": f"Database error: {str(db_error)}",
+                "sql": query,
+                "data": None
+            }
 
     except Exception as e:
-        print("Error:", e)
+        print(f"General error: {str(e)}")  # Add logging
         return {
-            "response": "I encountered an error processing your request. Please try again.",
-            "sql": None
+            "response": f"I encountered an error: {str(e)}. Please try again.",
+            "sql": None,
+            "data": None
         }
 
-@app.post("/api/v1/execute-query")
-async def execute_sql_query(query_request: QueryRequest):
+# Add this new endpoint
+@app.post("/api/v1/chat")
+async def chat(request: ChatRequest):
     try:
-        # Ensure the global connection is used or establish a new one
-        if not global_conn:
-            connection = psycopg2.connect(global_connstr)
+        message = request.message.lower()
+        
+        # Handle different types of queries
+        if any(word in message for word in ["hi", "hello", "hey"]):
+            return {"response": "Hello! I'm your SQL assistant. How can I help you with your database queries today?"}
+            
+        elif "help" in message or "what can you do" in message:
+            return {"response": """I can help you with:
+1. Writing SQL queries
+2. Explaining database concepts
+3. Optimizing your queries
+4. Understanding your database structure
+
+What would you like to know more about?"""}
+            
+        elif any(word in message for word in ["thanks", "thank you"]):
+            return {"response": "You're welcome! Let me know if you need anything else."}
+            
+        elif "bye" in message or "goodbye" in message:
+            return {"response": "Goodbye! Feel free to come back if you need more help."}
+            
         else:
-            connection = global_conn
-
-        if not connection:
-            raise HTTPException(status_code=500, detail="Failed to connect to the database.")
-
-        # Execute the query using the execute_query function from script.py
-        results, column_names = execute_query(connection, query_request.query)
-
-        if results is None:
-            raise HTTPException(status_code=400, detail="Failed to execute SQL query.")
-
-        return {
-            "success": True,
-            "results": results,
-            "columns": column_names
-        }
-
+            # Default response for other queries
+            return {"response": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"}
+            
     except Exception as e:
-        print("Error executing query:", e)
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-@app.get("/api/v1/chat-history")
-async def get_chat_history():
-    try:
-        # display names of every file in chats folder
-        if not os.path.exists("chats"):
-            os.makedirs("chats")
-        
-        chat_history = os.listdir("chats")
-        return {"success": True, "chat_history": chat_history}
-    
-    except Exception as e:
-        print("Error reading chat names:", e)
-        raise HTTPException(status_code=500, detail="Failed to get every chat.")
-
-
-@app.get("/api/v1/chat-history/{chat_name}")
-async def get_chat_history_by_name(chat_name: str):
-    try:
-        if not os.path.exists(f"chats/{chat_name}"):
-            raise HTTPException(status_code=404, detail=f"Chat history for {chat_name} not found.")
-        
-        with open(f"chats/{chat_name}", "r") as file:
-            chat_history = json.load(file)
-        return {"success": True, "chat_history": chat_history}
-    
-    except Exception as e:
-        print(f"Error reading chat history for {chat_name}:", e)
-        raise HTTPException(status_code=500, detail=f"Failed to read chat history for {chat_name}.")
+        raise HTTPException(status_code=500, detail=str(e))
