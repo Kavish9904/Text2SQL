@@ -1,5 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+
+# from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# from sqlalchemy import create_engine, Column, Integer, String
+# from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.orm import sessionmaker, Session
+# from passlib.context import CryptContext
+# from jose import JWTError
+# import jwt
+# from datetime import datetime, timedelta
+
 from pydantic import BaseModel
 from typing import Optional, Literal, List
 import mysql.connector
@@ -7,32 +17,27 @@ from mysql.connector import Error
 import duckdb
 import clickhouse_driver
 import requests
-import asyncpg
 import json
+from script import * # fetch_api_key, fetch_credentials, create_db_connection, fetch_table_metadata, generate_sql_query, execute_query, determine_db_type
 
 app = FastAPI()
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000"],  # Replace with your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 class DatabaseConnection(BaseModel):
-    type: Literal["postgresql", "mysql", "motherduck", "clickhouse", "cloudflare"]
     display_name: str
     host: str
     port: int
     database: str
     username: str
     password: str
-    token: Optional[str] = None
-    account_id: Optional[str] = None
-    database_id: Optional[str] = None
-    api_token: Optional[str] = None
     ip_whitelist: list[str]
 
 # Add this class for query requests
@@ -56,98 +61,47 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/test-connection")
 async def test_connection(connection: DatabaseConnection):
-    print(f"\nTesting {connection.type} connection...")
-    
     try:
-        if connection.type == "postgresql":
-            print("Connecting to PostgreSQL...")
-            # For Azure PostgreSQL, use the username as is
-            conn = await asyncpg.connect(
-                user=connection.username,  # Don't modify the username
-                password=connection.password,
-                database=connection.database,
-                host=connection.host,
-                port=connection.port,
-                ssl='require' if '.postgres.database.azure.com' in connection.host else None
-            )
-            await conn.execute('SELECT 1')
-            await conn.close()
-            print("PostgreSQL connection successful!")
-
-        elif connection.type == "mysql":
-            config = {
-                'host': connection.host,
-                'user': connection.username,
-                'password': connection.password,
-                'database': connection.database,
-                'port': connection.port,
-            }
-            if '.mysql.database.azure.com' in connection.host:
-                config['ssl_disabled'] = False
-            
-            conn = mysql.connector.connect(**config)
-            cursor = conn.cursor()
-            cursor.execute('SELECT 1')
-            cursor.fetchone()
-            cursor.close()
-            conn.close()
-
-        elif connection.type == "motherduck":
-            if not connection.token:
-                raise ValueError("MotherDuck token is required")
-            
-            conn_str = f"md:{connection.database}?token={connection.token}"
-            conn = duckdb.connect(conn_str)
-            conn.execute('SELECT 1')
-            conn.close()
-
-        elif connection.type == "clickhouse":
-            client = clickhouse_driver.Client(
-                host=connection.host,
-                port=connection.port,
-                user=connection.username,
-                password=connection.password,
-                database=connection.database,
-                secure=True
-            )
-            client.execute('SELECT 1')
-
-        elif connection.type == "cloudflare":
-            if not connection.account_id or not connection.database_id or not connection.api_token:
-                raise ValueError("Cloudflare D1 requires account_id, database_id, and api_token")
-                
-            headers = {
-                'Authorization': f'Bearer {connection.api_token}',
-                'Content-Type': 'application/json'
-            }
-            
-            url = f"https://api.cloudflare.com/client/v4/accounts/{connection.account_id}/d1/database/{connection.database_id}/query"
-            response = requests.post(
-                url,
-                headers=headers,
-                json={"sql": "SELECT 1"}
-            )
-            
-            if response.status_code != 200:
-                raise ValueError(f"Cloudflare D1 error: {response.text}")
-
-        else:
-            raise ValueError(f"Unsupported database type: {connection.type}")
-
-        print(f"{connection.type} connection successful!")
-        return {"status": "success"}
-
-    except asyncpg.InvalidPasswordError:
-        raise HTTPException(status_code=400, detail="Invalid username or password")
-    except asyncpg.InvalidCatalogNameError:
-        raise HTTPException(status_code=400, detail="Database does not exist")
+        # Format username correctly for Azure
+        server_name = connection.host.split('.')[0]  # Gets 'smartquery2' from the host
+        full_username = f"{connection.username}"  # Don't append server name here
+        
+        conn_str = (
+            f"host={connection.host} "
+            f"port={connection.port} "
+            f"dbname={connection.database} "
+            f"user={full_username} "
+            f"password={connection.password} "
+            "sslmode=require"
+        )
+        # connection = psycopg2.connect(
+        #     host=connection.host,
+        #     user=connection.username,
+        #     password=connection.password,
+        #     database=connection.database,
+        #     port=connection.port,
+        #     sslmode="require"
+        # )
+        
+        print("\n=== Connection String ===")
+        print(conn_str.replace(connection.password, "****"))
+        print("=======================\n")
+        
+        conn = psycopg2.connect(conn_str)
+        # conn.close()
+        global global_connstr, global_conn
+        global_connstr = conn_str
+        global_conn = conn
+        return {"success": True, "message": "Connection successful!"}
+    
     except Exception as e:
         print(f"Connection error: {str(e)}")
-        raise HTTPException(
-            status_code=400, 
-            detail="Failed to connect to database. Please check your connection details."
-        )
+        raise HTTPException(status_code=400, detail=str(e))
 
+# def open_connection():
+#     return psycopg2.connect(global_connstr)
+
+# session_started = False
 # Add this new endpoint
 @app.post("/api/v1/query")
 async def handle_query(query_request: QueryRequest):
