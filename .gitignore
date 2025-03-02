@@ -1,0 +1,7 @@
+backend/.env
+backend/__pycache__
+backend/rough*
+New_Folder/
+backend/fastapi-text-to-sql.py
+backend/models-and-database.py
+backend/db_proxy.py
