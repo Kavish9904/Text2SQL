@@ -169,6 +169,57 @@ export default function HomePage() {
     }
   }, [selectedDatabase]);
 
+  useEffect(() => {
+    // Load chat history when component mounts
+    const loadChatHistory = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/chats");
+        if (!response.ok) {
+          throw new Error("Failed to load chat history");
+        }
+        const chats = await response.json();
+
+        if (chats.length > 0) {
+          // Convert ISO date strings to Date objects and ensure proper typing
+          const formattedChats = chats.map(
+            (chat: {
+              id: string;
+              messages: Message[];
+              createdAt: string;
+              title: string;
+            }) => ({
+              ...chat,
+              createdAt: new Date(chat.createdAt),
+              messages: chat.messages || [], // Ensure messages is always an array
+            })
+          );
+
+          setChatSessions(formattedChats);
+          setCurrentChatId(formattedChats[0].id);
+          setMessages(formattedChats[0].messages);
+        } else {
+          // Create initial chat if no history exists
+          const initialChat: ChatSession = {
+            id: Date.now().toString(),
+            messages: [],
+            createdAt: new Date(),
+            title: "New Chat",
+          };
+          setChatSessions([initialChat]);
+          setCurrentChatId(initialChat.id);
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+        toast.error("Failed to load chat history");
+      }
+    };
+
+    if (isAuthenticated) {
+      loadChatHistory();
+    }
+  }, [isAuthenticated]);
+
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const content = e.target.value;
     setQueryContent(content);
@@ -189,37 +240,12 @@ export default function HomePage() {
   const generateChatTitle = (message: string): string => {
     const cleanMessage = message.toLowerCase().trim();
 
-    // Database specific patterns
-    if (cleanMessage.includes("select")) return "Data Query Chat";
-    if (cleanMessage.includes("insert")) return "Data Insert Discussion";
-    if (cleanMessage.includes("update")) return "Data Update Chat";
-    if (cleanMessage.includes("delete")) return "Data Deletion Query";
-    if (cleanMessage.includes("table")) return "Table Structure Chat";
-    if (cleanMessage.includes("index")) return "Index Discussion";
-    if (cleanMessage.includes("join")) return "Join Query Help";
-    if (cleanMessage.includes("optimize")) return "Query Optimization";
-    if (cleanMessage.includes("explain")) return "Query Explanation";
+    // If message is too long, truncate it
+    if (message.length > 30) {
+      return message.slice(0, 30) + "...";
+    }
 
-    // General patterns
-    if (cleanMessage.includes("help")) return "Help Request";
-    if (cleanMessage.includes("how to")) return "How-to Question";
-    if (cleanMessage.includes("what is")) return "Definition Request";
-    if (cleanMessage.includes("error")) return "Error Resolution";
-
-    // Default to truncated message
-    return message.length > 20 ? `${message.slice(0, 20)}...` : message;
-  };
-
-  const createNewChat = () => {
-    const newChat: ChatSession = {
-      id: Date.now().toString(),
-      messages: [],
-      createdAt: new Date(),
-      title: "New Chat",
-    };
-    setChatSessions((prev) => [...prev, newChat]);
-    setCurrentChatId(newChat.id);
-    setMessages([]);
+    return message;
   };
 
   const generateQueryTitle = (query: string): string => {
@@ -289,6 +315,47 @@ export default function HomePage() {
     return firstLine + (firstLine.length >= 30 ? "..." : "");
   };
 
+  const createNewChat = async () => {
+    try {
+      const newChatId = crypto.randomUUID();
+      const newChat = {
+        id: newChatId,
+        messages: [],
+        createdAt: new Date().toISOString(),
+        title: "New Chat",
+      };
+
+      // Save new chat to backend
+      const response = await fetch("http://localhost:8000/api/v1/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newChat),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create new chat");
+      }
+
+      // Add new chat to state at the beginning of the list
+      setChatSessions((prev) => [
+        {
+          ...newChat,
+          createdAt: new Date(newChat.createdAt),
+        },
+        ...prev,
+      ]);
+
+      // Switch to new chat
+      setCurrentChatId(newChatId);
+      setMessages([]);
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+      toast.error("Failed to create new chat");
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
@@ -299,27 +366,53 @@ export default function HomePage() {
         content: inputMessage,
       };
 
-      setMessages((prev) => [...prev, newMessage]);
-      setChatSessions((prev) =>
-        prev.map((session) => {
-          if (session.id === currentChatId) {
-            const updatedMessages = [...session.messages, newMessage];
-            const updatedTitle =
-              session.messages.length === 0
-                ? generateChatTitle(inputMessage)
-                : session.title;
-            return {
-              ...session,
-              messages: updatedMessages,
-              title: updatedTitle,
-            };
-          }
-          return session;
-        })
-      );
+      // Find current chat session
+      const currentSession = chatSessions.find((s) => s.id === currentChatId);
+      if (!currentSession) return;
 
+      // Create updated messages array
+      const updatedMessages = [...currentSession.messages, newMessage];
+
+      // Generate title from first message if this is the first user message
+      const updatedTitle =
+        currentSession.messages.length === 0
+          ? inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "..." : "")
+          : currentSession.title;
+
+      // Create updated chat data
+      const updatedChat = {
+        ...currentSession,
+        messages: updatedMessages,
+        title: updatedTitle,
+        createdAt: currentSession.createdAt.toISOString(),
+      };
+
+      // Update messages state
+      setMessages(updatedMessages);
       setInputMessage("");
 
+      // Update chat sessions state with new title
+      setChatSessions((prev) =>
+        prev.map((session) =>
+          session.id === currentChatId
+            ? {
+                ...updatedChat,
+                createdAt: new Date(updatedChat.createdAt),
+              }
+            : session
+        )
+      );
+
+      // Save updated chat to backend
+      await fetch("http://localhost:8000/api/v1/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedChat),
+      });
+
+      // Get assistant response
       const response = await fetch("http://localhost:8000/api/v1/chat", {
         method: "POST",
         headers: {
@@ -327,7 +420,7 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           message: inputMessage,
-          history: messages.map((msg) => ({
+          history: updatedMessages.map((msg) => ({
             role: msg.role,
             content: msg.content,
           })),
@@ -336,7 +429,6 @@ export default function HomePage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Error response:", errorText);
         throw new Error(
           `Failed to send message: ${response.status} - ${errorText}`
         );
@@ -348,11 +440,33 @@ export default function HomePage() {
         content: data.response,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Update messages with assistant's response
+      const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
+
+      // Update chat session with assistant's response
+      const finalUpdatedChat = {
+        ...updatedChat,
+        messages: finalMessages,
+      };
+
+      // Save final updated chat to backend
+      await fetch("http://localhost:8000/api/v1/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(finalUpdatedChat),
+      });
+
+      // Update chat sessions state
       setChatSessions((prev) =>
         prev.map((session) =>
           session.id === currentChatId
-            ? { ...session, messages: [...session.messages, assistantMessage] }
+            ? {
+                ...finalUpdatedChat,
+                createdAt: new Date(finalUpdatedChat.createdAt),
+              }
             : session
         )
       );
@@ -450,22 +564,40 @@ export default function HomePage() {
     </div>
   );
 
-  const deleteChat = (sessionId: string, e: React.MouseEvent) => {
+  const deleteChat = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setChatSessions((prev) =>
-      prev.filter((session) => session.id !== sessionId)
-    );
 
-    if (sessionId === currentChatId) {
-      const remainingChats = chatSessions.filter(
-        (session) => session.id !== sessionId
+    try {
+      // Delete chat from backend
+      const response = await fetch(
+        `http://localhost:8000/api/v1/chats/${sessionId}`,
+        {
+          method: "DELETE",
+        }
       );
-      if (remainingChats.length > 0) {
-        setCurrentChatId(remainingChats[0].id);
-        setMessages(remainingChats[0].messages);
-      } else {
-        createNewChat();
+
+      if (!response.ok) {
+        throw new Error("Failed to delete chat");
       }
+
+      setChatSessions((prev) =>
+        prev.filter((session) => session.id !== sessionId)
+      );
+
+      if (sessionId === currentChatId) {
+        const remainingChats = chatSessions.filter(
+          (session) => session.id !== sessionId
+        );
+        if (remainingChats.length > 0) {
+          setCurrentChatId(remainingChats[0].id);
+          setMessages(remainingChats[0].messages);
+        } else {
+          createNewChat();
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast.error("Failed to delete chat");
     }
   };
 
@@ -567,11 +699,63 @@ export default function HomePage() {
     }
   };
 
-  const switchChat = (sessionId: string) => {
-    setCurrentChatId(sessionId);
-    const session = chatSessions.find((s) => s.id === sessionId);
-    if (session) {
-      setMessages(session.messages);
+  const switchChat = async (sessionId: string) => {
+    try {
+      // Load chat from backend
+      const response = await fetch(
+        `http://localhost:8000/api/v1/chats/${sessionId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to load chat");
+      }
+
+      const chat = await response.json();
+
+      // Update the current chat session with proper date conversion
+      const formattedChat = {
+        ...chat,
+        createdAt: new Date(chat.createdAt),
+        messages: chat.messages || [], // Ensure messages is always an array
+      };
+
+      setCurrentChatId(sessionId);
+      setMessages(formattedChat.messages);
+
+      // Close the dropdown menu after selection
+      const dropdownTrigger = document.activeElement as HTMLElement;
+      dropdownTrigger?.blur();
+    } catch (error) {
+      console.error("Error loading chat:", error);
+      toast.error("Failed to load chat");
+    }
+  };
+
+  const refreshChatHistory = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/chats");
+      if (!response.ok) {
+        throw new Error("Failed to load chat history");
+      }
+      const chats = await response.json();
+
+      // Convert ISO date strings to Date objects and ensure proper typing
+      const formattedChats = chats.map(
+        (chat: {
+          id: string;
+          messages: Message[];
+          createdAt: string;
+          title: string;
+        }) => ({
+          ...chat,
+          createdAt: new Date(chat.createdAt),
+          messages: chat.messages || [], // Ensure messages is always an array
+        })
+      );
+
+      setChatSessions(formattedChats);
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      toast.error("Failed to load chat history");
     }
   };
 
@@ -935,19 +1119,27 @@ export default function HomePage() {
           {isAssistantVisible && (
             <div className="w-80 min-w-[20rem] border-l border-gray-200 flex flex-col overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between relative shrink-0">
-                <DropdownMenu>
+                <DropdownMenu
+                  onOpenChange={(open) => {
+                    if (open) {
+                      refreshChatHistory();
+                    }
+                  }}
+                >
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute left-3"
+                      className="absolute left-3 hover:bg-gray-100"
+                      onClick={() => refreshChatHistory()}
                     >
                       <History className="h-4 w-4 text-gray-600" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-[250px] bg-white border border-gray-200"
+                    className="w-[250px] bg-white border border-gray-200 shadow-lg"
+                    sideOffset={5}
                   >
                     <DropdownMenuLabel className="px-3 py-2">
                       <span className="text-sm font-semibold text-gray-900">
@@ -955,39 +1147,48 @@ export default function HomePage() {
                       </span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="h-[1px] bg-gray-200" />
-                    {chatSessions.map((session) => (
-                      <DropdownMenuItem
-                        key={session.id}
-                        onClick={() => switchChat(session.id)}
-                        className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${
-                          currentChatId === session.id ? "bg-gray-50" : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <MessageSquare className="h-4 w-4 text-gray-900 flex-shrink-0" />
-                          <div className="flex flex-col flex-1 min-w-0">
-                            <span className="text-sm text-gray-900 truncate">
-                              {session.messages.length === 0
-                                ? "New Chat"
-                                : session.title}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(session.createdAt).toLocaleDateString()}
-                            </span>
+                    {chatSessions.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        No chat history
+                      </div>
+                    ) : (
+                      chatSessions.map((session) => (
+                        <DropdownMenuItem
+                          key={session.id}
+                          onSelect={() => switchChat(session.id)}
+                          className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${
+                            currentChatId === session.id ? "bg-gray-50" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <MessageSquare className="h-4 w-4 text-gray-900 flex-shrink-0" />
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-sm text-gray-900 truncate">
+                                {session.title}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(
+                                  session.createdAt
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        {chatSessions.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-gray-200 rounded-full flex-shrink-0 ml-2"
-                            onClick={(e) => deleteChat(session.id, e)}
-                          >
-                            <X className="h-3 w-3 text-gray-900" />
-                          </Button>
-                        )}
-                      </DropdownMenuItem>
-                    ))}
+                          {chatSessions.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 hover:bg-gray-200 rounded-full flex-shrink-0 ml-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteChat(session.id, e);
+                              }}
+                            >
+                              <X className="h-3 w-3 text-gray-900" />
+                            </Button>
+                          )}
+                        </DropdownMenuItem>
+                      ))
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 

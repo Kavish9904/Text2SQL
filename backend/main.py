@@ -19,6 +19,8 @@ import clickhouse_driver
 import requests
 import json
 from script import * # fetch_api_key, fetch_credentials, create_db_connection, fetch_table_metadata, generate_sql_query, execute_query, determine_db_type
+import os
+from datetime import datetime
 
 app = FastAPI()
 
@@ -54,6 +56,12 @@ class QueryRequest(BaseModel):
 class Message(BaseModel):
     role: str
     content: str
+
+class ChatSession(BaseModel):
+    id: str
+    messages: List[Message]
+    createdAt: str
+    title: str
 
 class ChatRequest(BaseModel):
     message: str
@@ -241,4 +249,183 @@ What would you like to know more about?"""}
             return {"response": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"}
             
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def generate_chat_title(messages):
+    if not messages:
+        return "New Chat"
+    
+    # Get the first user message
+    first_message = None
+    for msg in messages:
+        if isinstance(msg, dict) and msg.get("role") == "user" and msg.get("content"):
+            first_message = msg["content"]
+            break
+    
+    if not first_message:
+        return "New Chat"
+    
+    # Generate title from the first message
+    title = first_message.strip()
+    # Truncate to first 30 characters and add ellipsis if longer
+    if len(title) > 30:
+        title = title[:27] + "..."
+    return title
+
+@app.get("/api/v1/chats")
+async def get_chat_history():
+    try:
+        # Create chats directory if it doesn't exist
+        os.makedirs("chats", exist_ok=True)
+
+        # Read all chat files from the chats directory
+        chat_files = []
+        if os.path.exists("chats"):
+            chat_files = [f for f in os.listdir("chats") if f.endswith(".json")]
+        
+        chats = []
+        for file in chat_files:
+            try:
+                with open(f"chats/{file}", "r") as f:
+                    data = json.load(f)
+                    
+                    # Handle case where file contains a list
+                    if isinstance(data, list):
+                        chat = {
+                            "id": file.replace(".json", ""),
+                            "messages": [],
+                            "createdAt": datetime.now().isoformat(),
+                            "title": "New Chat"
+                        }
+                        # Convert list items to messages if possible
+                        for item in data:
+                            if isinstance(item, dict) and "content" in item:
+                                chat["messages"].append({
+                                    "role": item.get("role", "user"),
+                                    "content": item["content"]
+                                })
+                            elif isinstance(item, str):
+                                chat["messages"].append({
+                                    "role": "user",
+                                    "content": item
+                                })
+                    else:
+                        chat = data if isinstance(data, dict) else {}
+                    
+                    # Format messages
+                    messages = chat.get("messages", [])
+                    formatted_messages = []
+                    if isinstance(messages, list):
+                        for msg in messages:
+                            if isinstance(msg, dict):
+                                formatted_messages.append({
+                                    "role": msg.get("role", "user"),
+                                    "content": msg.get("content", "")
+                                })
+                            elif isinstance(msg, str):
+                                formatted_messages.append({
+                                    "role": "user",
+                                    "content": msg
+                                })
+                    
+                    # Create properly formatted chat object with generated title
+                    formatted_chat = {
+                        "id": chat.get("id", file.replace(".json", "")),
+                        "messages": formatted_messages,
+                        "createdAt": chat.get("createdAt", datetime.now().isoformat()),
+                        "title": chat.get("title") or generate_chat_title(formatted_messages)
+                    }
+                    
+                    chats.append(formatted_chat)
+                    
+                    # Update the file with the fixed structure
+                    with open(f"chats/{file}", "w") as f:
+                        json.dump(formatted_chat, f, indent=2)
+                        
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Error reading chat file {file}: {str(e)}")
+                continue
+        
+        # Sort chats by createdAt in descending order
+        try:
+            chats.sort(key=lambda x: x["createdAt"], reverse=True)
+        except Exception as e:
+            print(f"Error sorting chats: {str(e)}")
+            # Return unsorted chats if sorting fails
+            return chats
+            
+        return chats
+    except Exception as e:
+        print(f"Error in get_chat_history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/chats")
+async def save_chat(chat: ChatSession):
+    try:
+        # Create chats directory if it doesn't exist
+        os.makedirs("chats", exist_ok=True)
+        
+        # Generate title if not provided
+        title = chat.title or generate_chat_title(chat.messages)
+        
+        # Ensure the chat data is properly formatted
+        chat_data = {
+            "id": chat.id,
+            "messages": [{"role": msg.role, "content": msg.content} for msg in chat.messages],
+            "createdAt": chat.createdAt,
+            "title": title
+        }
+        
+        # Save chat to a file
+        with open(f"chats/{chat.id}.json", "w") as f:
+            json.dump(chat_data, f, indent=2)
+        
+        return {"message": "Chat saved successfully"}
+    except Exception as e:
+        print(f"Error in save_chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/chats/{chat_id}")
+async def get_chat(chat_id: str):
+    try:
+        # Check if chat file exists
+        chat_path = f"chats/{chat_id}.json"
+        if not os.path.exists(chat_path):
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        # Read chat from file
+        try:
+            with open(chat_path, "r") as f:
+                chat = json.load(f)
+            return chat
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error reading chat file {chat_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error reading chat: {str(e)}")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error in get_chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/v1/chats/{chat_id}")
+async def delete_chat(chat_id: str):
+    try:
+        # Check if chat file exists
+        chat_path = f"chats/{chat_id}.json"
+        if not os.path.exists(chat_path):
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        # Delete chat file
+        try:
+            os.remove(chat_path)
+            return {"message": "Chat deleted successfully"}
+        except IOError as e:
+            print(f"Error deleting chat file {chat_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error deleting chat: {str(e)}")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error in delete_chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

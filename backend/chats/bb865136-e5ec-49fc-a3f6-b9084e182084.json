@@ -1,0 +1,23 @@
+{
+  "id": "bb865136-e5ec-49fc-a3f6-b9084e182084",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hi"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! I'm your SQL assistant. How can I help you with your database queries today?"
+    },
+    {
+      "role": "user",
+      "content": "what is total inventory value"
+    },
+    {
+      "role": "assistant",
+      "content": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"
+    }
+  ],
+  "createdAt": "2025-03-02T18:17:49.495Z",
+  "title": "hi"
+}
