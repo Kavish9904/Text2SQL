@@ -110,14 +110,24 @@ export default function HomePage() {
         localStorage.getItem("currentUser") || "{}"
       );
       if (currentUser && currentUser.name) {
-        setWorkspaceTitle(`${currentUser.name}'s Workspace`);
-        setEditValue(workspaceTitle);
+        const savedWorkspaceTitle = localStorage.getItem("workspaceTitle");
+        if (savedWorkspaceTitle) {
+          setWorkspaceTitle(savedWorkspaceTitle);
+          setEditValue(savedWorkspaceTitle);
+        } else {
+          const defaultTitle = `${currentUser.name}'s Workspace`;
+          setWorkspaceTitle(defaultTitle);
+          setEditValue(defaultTitle);
+          localStorage.setItem("workspaceTitle", defaultTitle);
+        }
       } else {
-        setWorkspaceTitle("User's Workspace");
-        setEditValue("User's Workspace");
+        const defaultTitle = "User's Workspace";
+        setWorkspaceTitle(defaultTitle);
+        setEditValue(defaultTitle);
+        localStorage.setItem("workspaceTitle", defaultTitle);
       }
     }
-  }, [isAuthenticated, workspaceTitle]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -168,8 +178,12 @@ export default function HomePage() {
 
   const handleWorkspaceEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    setWorkspaceTitle(editValue);
-    setIsEditingWorkspace(false);
+    const newTitle = editValue.trim();
+    if (newTitle) {
+      setWorkspaceTitle(newTitle);
+      localStorage.setItem("workspaceTitle", newTitle);
+      setIsEditingWorkspace(false);
+    }
   };
 
   const generateChatTitle = (message: string): string => {
@@ -566,8 +580,8 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen bg-white">
-      <div className="w-64 border-r border-gray-200 flex flex-col">
+    <div className="flex h-screen overflow-hidden bg-white">
+      <div className="w-64 min-w-[16rem] border-r border-gray-200 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           {isEditingWorkspace ? (
             <form
@@ -685,10 +699,10 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="border-b border-gray-200 flex items-center justify-between h-14 bg-white z-10 relative">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="border-b border-gray-200 flex items-center justify-between h-14 bg-white z-10 relative shrink-0">
           <div className="text-xl px-4 text-gray-900">T2SQL</div>
-          <div className="flex items-center gap-4 absolute right-4">
+          <div className="flex items-center gap-4 px-4">
             <Button
               variant="ghost"
               size="icon"
@@ -752,176 +766,174 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={`flex-1 flex ${isAssistantVisible ? "" : "pr-0"}`}>
-          <div className="flex-1 border-r border-gray-200">
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Button
-                    className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
-                    onClick={handleQueryRun}
-                    disabled={!selectedDatabase || !queryContent.trim()}
+        <div className="flex-1 flex min-h-0">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-r border-gray-200">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-4 overflow-x-auto">
+                <Button
+                  className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
+                  onClick={handleQueryRun}
+                  disabled={!selectedDatabase || !queryContent.trim()}
+                >
+                  <Play className="h-4 w-4" />
+                  RUN
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-gray-900"
+                    >
+                      <Database className="h-4 w-4 text-gray-600" />
+                      {selectedDatabase?.name || "Select Database"}
+                      <ChevronRight className="h-4 w-4 text-gray-600" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-[200px] bg-white border border-gray-200"
                   >
-                    <Play className="h-4 w-4" />
-                    RUN
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="flex items-center gap-2 text-gray-900"
-                      >
-                        <Database className="h-4 w-4 text-gray-600" />
-                        {selectedDatabase?.name || "Select Database"}
-                        <ChevronRight className="h-4 w-4 text-gray-600" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-[200px] bg-white border border-gray-200"
-                    >
-                      {connectedDatabases.length === 0 ? (
-                        <DropdownMenuItem disabled className="text-gray-500">
-                          No databases connected
-                        </DropdownMenuItem>
-                      ) : (
-                        connectedDatabases.map((db) => (
-                          <DropdownMenuItem
-                            key={db.id}
-                            onClick={() => setSelectedDatabase(db)}
-                            className="flex items-center gap-2 text-gray-900 hover:bg-gray-100"
-                          >
-                            <Database className="h-4 w-4 text-gray-600" />
-                            {db.name}
-                          </DropdownMenuItem>
-                        ))
-                      )}
-                      <DropdownMenuItem
-                        className="flex items-center gap-2 border-t text-gray-900 hover:bg-gray-100"
-                        onClick={() => router.push("/connect")}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add New Database
+                    {connectedDatabases.length === 0 ? (
+                      <DropdownMenuItem disabled className="text-gray-500">
+                        No databases connected
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
-                <div className="flex justify-between p-3 border-b border-gray-200">
-                  <div className="text-gray-900 font-semibold tracking-wide">
-                    {activeQueryId
-                      ? queries.find((q) => q.id === activeQueryId)?.title ||
-                        "Query Editor"
-                      : "New Query"}
-                  </div>
-                  <Maximize2 className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="flex h-[calc(100%-48px)]">
-                  <div className="w-12 flex-none overflow-hidden relative border-r bg-white">
-                    <div
-                      ref={lineNumbersRef}
-                      className="absolute w-full text-right pr-4 py-3 text-gray-400 select-none"
-                      style={{ transform: `translateY(-${scrollPosition}px)` }}
+                    ) : (
+                      connectedDatabases.map((db) => (
+                        <DropdownMenuItem
+                          key={db.id}
+                          onClick={() => setSelectedDatabase(db)}
+                          className="flex items-center gap-2 text-gray-900 hover:bg-gray-100"
+                        >
+                          <Database className="h-4 w-4 text-gray-600" />
+                          {db.name}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuItem
+                      className="flex items-center gap-2 border-t text-gray-900 hover:bg-gray-100"
+                      onClick={() => router.push("/connect")}
                     >
-                      {Array.from(
-                        { length: Math.max(lineCount, 1) },
-                        (_, i) => (
-                          <div key={i + 1} className="leading-6 h-6">
-                            {i + 1}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  <textarea
-                    ref={textareaRef}
-                    value={queryContent}
-                    onChange={handleQueryChange}
-                    onScroll={(e) => {
-                      const scrollTop = e.currentTarget.scrollTop;
-                      setScrollPosition(scrollTop);
-                      if (lineNumbersRef.current) {
-                        lineNumbersRef.current.style.transform = `translateY(-${scrollTop}px)`;
-                      }
-                    }}
-                    placeholder="Type your query here..."
-                    className="flex-1 p-3 resize-none outline-none leading-6 overflow-y-auto text-gray-900 placeholder:text-gray-400"
-                    style={{
-                      lineHeight: "1.5rem",
-                    }}
-                  />
-                </div>
+                      <Plus className="h-4 w-4" />
+                      Add New Database
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+            </div>
 
-              <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
-                <div className="flex justify-between p-3 border-b border-gray-200">
-                  <div className="text-gray-900 font-semibold tracking-wide">
-                    Results
-                  </div>
-                  <Maximize2 className="h-4 w-4 text-gray-600" />
+            <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0">
+              <div className="flex justify-between p-3 border-b border-gray-200">
+                <div className="text-gray-900 font-semibold tracking-wide truncate">
+                  {activeQueryId
+                    ? queries.find((q) => q.id === activeQueryId)?.title ||
+                      "Query Editor"
+                    : "New Query"}
                 </div>
-                <div className="p-4 h-[calc(100%-48px)] overflow-auto">
-                  {queryError ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="text-red-500 mb-2">
-                        Error executing query
+                <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+              </div>
+              <div className="flex h-[calc(100%-48px)]">
+                <div className="w-12 flex-none overflow-hidden relative border-r bg-white">
+                  <div
+                    ref={lineNumbersRef}
+                    className="absolute w-full text-right pr-4 py-3 text-gray-400 select-none"
+                    style={{ transform: `translateY(-${scrollPosition}px)` }}
+                  >
+                    {Array.from({ length: Math.max(lineCount, 1) }, (_, i) => (
+                      <div key={i + 1} className="leading-6 h-6">
+                        {i + 1}
                       </div>
-                      <div className="text-sm text-gray-600">{queryError}</div>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={queryContent}
+                  onChange={handleQueryChange}
+                  onScroll={(e) => {
+                    const scrollTop = e.currentTarget.scrollTop;
+                    setScrollPosition(scrollTop);
+                    if (lineNumbersRef.current) {
+                      lineNumbersRef.current.style.transform = `translateY(-${scrollTop}px)`;
+                    }
+                  }}
+                  placeholder="Type your query here..."
+                  className="flex-1 p-3 resize-none outline-none leading-6 overflow-y-auto text-gray-900 placeholder:text-gray-400"
+                  style={{
+                    lineHeight: "1.5rem",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0">
+              <div className="flex justify-between p-3 border-b border-gray-200">
+                <div className="text-gray-900 font-semibold tracking-wide">
+                  Results
+                </div>
+                <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+              </div>
+              <div className="h-[calc(100%-48px)] overflow-auto">
+                {queryError ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                    <div className="text-red-500 mb-2">
+                      Error executing query
                     </div>
-                  ) : queryResults ? (
-                    <div className="w-full">
-                      {queryResults.length > 0 ? (
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              {Object.keys(queryResults[0]).map((key) => (
-                                <th
-                                  key={key}
-                                  className="text-left p-2 border border-gray-200 text-sm font-semibold text-gray-900"
-                                >
-                                  {key}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {queryResults.map((row, i) => (
-                              <tr key={i} className="border-b border-gray-200">
-                                {Object.values(row).map(
-                                  (value: TableCellValue, j) => (
-                                    <td
-                                      key={j}
-                                      className="p-2 border border-gray-200 text-sm text-gray-900"
+                    <div className="text-sm text-gray-600">{queryError}</div>
+                  </div>
+                ) : queryResults ? (
+                  <div className="relative w-full h-full overflow-auto">
+                    <div className="inline-block min-w-full align-middle">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            {Object.keys(queryResults[0]).map((key) => (
+                              <th
+                                key={key}
+                                className="sticky top-0 z-10 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 bg-gray-50 border-b border-gray-200 whitespace-nowrap"
+                                style={{ minWidth: "150px" }}
+                              >
+                                {key}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {queryResults.map((row, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              {Object.values(row).map(
+                                (value: TableCellValue, j) => (
+                                  <td
+                                    key={j}
+                                    className="px-3 py-2 text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap"
+                                    style={{ minWidth: "150px" }}
+                                  >
+                                    <div
+                                      className="truncate"
+                                      title={value?.toString() ?? "null"}
                                     >
                                       {value?.toString() ?? "null"}
-                                    </td>
-                                  )
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="text-center text-gray-500">
-                          Query executed successfully, but no results returned
-                        </div>
-                      )}
+                                    </div>
+                                  </td>
+                                )
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-                      <div className="mb-2">No results to display</div>
-                      <div className="text-sm">Run a query to see results</div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-4">
+                    <div className="mb-2">No results to display</div>
+                    <div className="text-sm">Run a query to see results</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {isAssistantVisible && (
-            <div className="w-80 border-l border-gray-200 flex flex-col h-full">
+            <div className="w-80 min-w-[20rem] border-l border-gray-200 flex flex-col overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between relative shrink-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1005,10 +1017,11 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {renderAssistantContent()}
-
-              <div className="p-4 border-t border-gray-200 shrink-0">
-                {renderAssistantInput()}
+              <div className="flex-1 overflow-hidden flex flex-col">
+                {renderAssistantContent()}
+                <div className="p-4 border-t border-gray-200 shrink-0">
+                  {renderAssistantInput()}
+                </div>
               </div>
             </div>
           )}

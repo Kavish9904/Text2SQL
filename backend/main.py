@@ -43,6 +43,7 @@ class QueryRequest(BaseModel):
     port: int
     username: str
     password: str
+    type: Optional[Literal["postgresql", "mysql", "motherduck", "clickhouse", "cloudflare"]] = None
 
 # Add these models
 class Message(BaseModel):
@@ -151,82 +152,97 @@ async def test_connection(connection: DatabaseConnection):
 @app.post("/api/v1/query")
 async def handle_query(query_request: QueryRequest):
     try:
-        query = query_request.query.lower().strip()
-        
-        # Handle conversational queries first
-        if any(word in query for word in ["hi", "hello", "hey", "greetings"]):
-            return {
-                "response": "Hello! I'm your database assistant. How can I help you today?",
-                "sql": None,
-                "data": None
-            }
-            
-        # How are you
-        elif any(phrase in query for phrase in ["how are you", "how're you", "how you doing"]):
-            phrase = query  # or however you want to define the phrase variable
-            response = f"I understand you want to {phrase}. Let me help you with that."
-            return {
-                "response": response,
-                "sql": None,
-                "data": None
-            }
-            
-        # Thank you
-        elif any(phrase in query for phrase in ["thank you", "thanks", "thx"]):
-            return {
-                "response": "You're welcome! Let me know if you need anything else.",
-                "sql": None,
-                "data": None
-            }
-            
-        # Help or what can you do
-        elif any(phrase in query for word in ["help", "what can you do", "capabilities"]):
-            return {
-                "response": """I can help you with several things:
-1. Answer questions about your database
-2. Show available tables and their contents
-3. Help you query specific data
-4. Create visualizations of your data
+        query = query_request.query.strip()
 
-What would you like to know more about?""",
-                "sql": None,
-                "data": None
-            }
-            
-        # Goodbye
-        elif any(word in query for word in ["bye", "goodbye", "see you", "cya"]):
-            return {
-                "response": "Goodbye! Have a great day!",
-                "sql": None,
-                "data": None
-            }
-
-        # If not a conversational query, try to execute the database query
         try:
-            # Create PostgreSQL connection
-            conn = await asyncpg.connect(
-                user=query_request.username,
-                password=query_request.password,
-                database=query_request.database,
-                host=query_request.host,
-                port=query_request.port
-            )
+            result = None
             
-            # Execute the query
-            result = await conn.fetch(query)
-            await conn.close()
-            
-            # Convert result to JSON-serializable format
-            formatted_result = [dict(row) for row in result]
-            
+            # Determine database type from the connection string or configuration
+            if '.postgres.database.azure.com' in query_request.host or query_request.port == 5432:
+                # PostgreSQL
+                conn = await asyncpg.connect(
+                    user=query_request.username,
+                    password=query_request.password,
+                    database=query_request.database,
+                    host=query_request.host,
+                    port=query_request.port,
+                    ssl='require' if '.postgres.database.azure.com' in query_request.host else None
+                )
+                result = await conn.fetch(query)
+                await conn.close()
+                formatted_result = [dict(row) for row in result]
+
+            elif '.mysql.database.azure.com' in query_request.host or query_request.port == 3306:
+                # MySQL
+                config = {
+                    'host': query_request.host,
+                    'user': query_request.username,
+                    'password': query_request.password,
+                    'database': query_request.database,
+                    'port': query_request.port,
+                }
+                if '.mysql.database.azure.com' in query_request.host:
+                    config['ssl_disabled'] = False
+                
+                conn = mysql.connector.connect(**config)
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute(query)
+                formatted_result = cursor.fetchall()
+                cursor.close()
+                conn.close()
+
+            elif 'motherduck' in query_request.host.lower():
+                # MotherDuck
+                conn_str = f"md:{query_request.database}?token={query_request.password}"  # Using password field for token
+                conn = duckdb.connect(conn_str)
+                result = conn.execute(query).fetchall()
+                columns = conn.execute(query).description
+                formatted_result = [
+                    dict(zip([col[0] for col in columns], row))
+                    for row in result
+                ]
+                conn.close()
+
+            elif 'clickhouse' in query_request.host.lower():
+                # ClickHouse
+                client = clickhouse_driver.Client(
+                    host=query_request.host,
+                    port=query_request.port,
+                    user=query_request.username,
+                    password=query_request.password,
+                    database=query_request.database,
+                    secure=True
+                )
+                result = client.execute(query)
+                columns = client.execute(query, with_column_types=True)[1]
+                formatted_result = [
+                    dict(zip([col[0] for col in columns], row))
+                    for row in result
+                ]
+
+            elif 'cloudflare' in query_request.host.lower():
+                # Cloudflare D1
+                headers = {
+                    'Authorization': f'Bearer {query_request.password}',  # Using password field for API token
+                    'Content-Type': 'application/json'
+                }
+                url = f"https://api.cloudflare.com/client/v4/accounts/{query_request.username}/d1/database/{query_request.database}/query"  # Using username field for account_id
+                response = requests.post(url, headers=headers, json={"sql": query})
+                if response.status_code != 200:
+                    raise Exception(f"Cloudflare D1 error: {response.text}")
+                formatted_result = response.json()['result']
+
+            else:
+                raise Exception("Unknown database type. Please check your connection settings.")
+
             return {
                 "response": "Query executed successfully",
                 "sql": query,
                 "data": formatted_result
             }
-            
+
         except Exception as db_error:
-            print(f"Database error: {str(db_error)}")  # Add logging
+            print(f"Database error: {str(db_error)}")
             return {
                 "response": f"Database error: {str(db_error)}",
                 "sql": query,
@@ -234,9 +250,9 @@ What would you like to know more about?""",
             }
 
     except Exception as e:
-        print(f"General error: {str(e)}")  # Add logging
+        print(f"General error: {str(e)}")
         return {
-            "response": f"I encountered an error: {str(e)}. Please try again.",
+            "response": f"Error: {str(e)}",
             "sql": None,
             "data": None
         }
