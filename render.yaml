@@ -14,17 +14,26 @@ services:
         value: 3.11.0
       - key: PYTHONPATH
         value: /opt/render/project/src/backend
-      - key: OPENAI_APIKEY
+      # MySQL Configuration
+      - key: MYSQL_HOST
         sync: false
-      - key: PGHOST
+      - key: MYSQL_USER
         sync: false
-      - key: PGUSER
+      - key: MYSQL_PASSWORD
         sync: false
-      - key: PGPASSWORD
+      - key: MYSQL_DATABASE
         sync: false
-      - key: PGDATABASE
+      # ClickHouse Configuration
+      - key: CLICKHOUSE_HOST
         sync: false
-      - key: PGPORT
+      - key: CLICKHOUSE_USER
+        sync: false
+      - key: CLICKHOUSE_PASSWORD
+        sync: false
+      - key: CLICKHOUSE_DATABASE
+        sync: false
+      # DuckDB Configuration
+      - key: DUCKDB_PATH
         sync: false
 
   - type: web
