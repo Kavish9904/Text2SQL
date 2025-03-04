@@ -23,7 +23,7 @@
     "eslint-config-next": "^15.2.1"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build"
+    "dev": "npx next dev",
+    "build": "npx next build"
   }
 }
