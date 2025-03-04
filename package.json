@@ -18,10 +18,6 @@
     "react-hot-toast": "^2.5.2",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "critters": "^0.0.20",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -29,9 +25,14 @@
     "eslint": "^8.0.0",
     "eslint-config-next": "14.1.0"
   },
+  "devDependencies": {
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "npm ci && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/"
+    "build": "npm install && npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p && next build"
   },
   "optionalDependencies": {
     "@next/swc-linux-x64-gnu": "14.1.0",
