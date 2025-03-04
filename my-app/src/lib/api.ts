@@ -1,7 +1,7 @@
 export const getApiUrl = () => {
-  // In production, use the production URL
-  if (process.env.NODE_ENV === "production") {
-    return "https://text2sql-backend.onrender.com";
+  // In production, use the environment variable
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.trim();
   }
 
   // In development, use localhost

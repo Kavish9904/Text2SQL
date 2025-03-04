@@ -1400,16 +1400,9 @@ export default function HomePage() {
                 <DropdownMenuItem
                   className="px-3 py-2 hover:bg-gray-50 text-sm text-red-600 cursor-pointer flex items-center"
                   onClick={() => {
-                    try {
-                      // Clear all authentication-related data
-                      localStorage.clear();
-                      // Force reload the page to clear any cached state
-                      window.location.href = "/login";
-                    } catch (error) {
-                      console.error("Logout failed:", error);
-                      // Force reload as a fallback
-                      window.location.reload();
-                    }
+                    localStorage.removeItem("isAuthenticated");
+                    localStorage.removeItem("currentUser");
+                    router.push("/login");
                   }}
                 >
                   <LogOut className="h-4 w-4 mr-2 text-red-600" />
