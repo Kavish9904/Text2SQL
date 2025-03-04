@@ -16,16 +16,14 @@
     "autoprefixer": "latest",
     "postcss": "latest",
     "tailwindcss": "latest",
-    "critters": "latest"
+    "critters": "latest",
+    "@types/react": "^19.0.10",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "eslint-config-next": "^15.2.1"
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mkdir -p build && cp -r .next/standalone/* build/ && cp -r .next/static build/_next/"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.10",
-    "@types/node": "^20.0.0",
-    "eslint-config-next": "^15.2.1",
-    "typescript": "^5.0.0"
+    "build": "next build"
   }
 }
