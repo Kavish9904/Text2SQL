@@ -45,6 +45,15 @@ export default function PostgresConnectPage() {
     setTesting(true);
 
     try {
+      // First test the API connection
+      const apiConnected = await testApiConnection();
+      if (!apiConnected) {
+        throw new Error(
+          "Cannot connect to the backend API. Please check if the backend server is running."
+        );
+      }
+
+      // Test database connection
       const response = await fetch(`${apiUrl}/api/test-connection`, {
         method: "POST",
         headers: {
@@ -64,7 +73,10 @@ export default function PostgresConnectPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to connect to database");
+        throw new Error(
+          errorData.detail ||
+            "Failed to connect to database. Please check your credentials and ensure the database is accessible."
+        );
       }
 
       // Check for duplicate connections
@@ -80,7 +92,7 @@ export default function PostgresConnectPage() {
       );
 
       if (isDuplicate) {
-        throw new Error("Database Connection Already Exists");
+        throw new Error("This database connection already exists.");
       }
 
       // If no duplicate, proceed with saving
@@ -102,11 +114,26 @@ export default function PostgresConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast("Database connection successful!");
-      router.push("/databases");
+      toast({
+        title: "Success",
+        description:
+          "Database connection successful! Redirecting to databases page...",
+      });
+
+      // Add a small delay before redirecting
+      setTimeout(() => {
+        router.push("/databases");
+      }, 1500);
     } catch (error) {
-      console.error("Error:", error);
-      toast.error(error instanceof Error ? error.message : "Connection failed");
+      console.error("Connection error:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to connect to the database. Please check your settings.",
+        variant: "destructive",
+      });
     } finally {
       setTesting(false);
     }
