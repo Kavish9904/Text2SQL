@@ -111,7 +111,6 @@ export default function ClickHouseConnectPage() {
       );
 
       toast({
-        title: "Success",
         description:
           "ClickHouse connection successful! Redirecting to databases page...",
       });

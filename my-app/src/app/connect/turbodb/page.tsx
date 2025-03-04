@@ -93,7 +93,6 @@ export default function TurboDBConnectPage() {
       );
 
       toast({
-        title: "Success",
         description:
           "TurboDB connection successful! Redirecting to databases page...",
       });

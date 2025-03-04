@@ -93,7 +93,6 @@ export default function CloudflareD1ConnectPage() {
       );
 
       toast({
-        title: "Success",
         description:
           "Cloudflare D1 connection successful! Redirecting to databases page...",
       });

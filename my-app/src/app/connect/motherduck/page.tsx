@@ -88,7 +88,6 @@ export default function MotherDuckConnectPage() {
       );
 
       toast({
-        title: "Success",
         description:
           "MotherDuck connection successful! Redirecting to databases page...",
       });

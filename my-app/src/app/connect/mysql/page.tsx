@@ -111,7 +111,6 @@ export default function MySQLConnectPage() {
       );
 
       toast({
-        title: "Success",
         description:
           "MySQL connection successful! Redirecting to databases page...",
       });
