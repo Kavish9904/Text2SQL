@@ -25,7 +25,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && next build"
+    "build": "npm install && npm install -D tailwindcss@latest postcss@latest autoprefixer@latest && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
