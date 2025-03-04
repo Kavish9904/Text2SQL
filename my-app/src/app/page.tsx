@@ -140,12 +140,9 @@ export default function HomePage() {
   const commandSuggestionsRef = useRef<HTMLDivElement>(null);
 
   // Add debounced search
-  const debouncedSetShowSuggestions = useCallback(
-    debounce((value: boolean) => {
-      setShowSuggestions(value);
-    }, 50),
-    [setShowSuggestions]
-  );
+  const debouncedSetShowSuggestions = useCallback((value: boolean) => {
+    setShowSuggestions(value);
+  }, []);
 
   // Add new state for assistant width
   const [assistantWidth, setAssistantWidth] = useState(320); // default width 320px
@@ -304,57 +301,60 @@ export default function HomePage() {
     }
   }, [isAuthenticated]);
 
-  // Wrap 'fetchTableMetadata' in useCallback to prevent it from changing on every render
-  const fetchTableMetadata = useCallback(async () => {
-    if (!selectedDatabase) {
-      console.log("No database selected");
-      return;
-    }
+  useEffect(() => {
+    if (selectedDatabase) {
+      const fetchMetadata = async () => {
+        try {
+          console.log("Fetching metadata for database:", selectedDatabase.name);
+          const response = await fetch(
+            "http://localhost:8000/api/v1/metadata",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                host: selectedDatabase.host,
+                port: selectedDatabase.port,
+                database: selectedDatabase.database,
+                username: selectedDatabase.username,
+                password: selectedDatabase.password,
+              }),
+            }
+          );
 
-    try {
-      console.log("Fetching metadata for database:", selectedDatabase.name);
-      const response = await fetch("http://localhost:8000/api/v1/metadata", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          host: selectedDatabase.host,
-          port: selectedDatabase.port,
-          database: selectedDatabase.database,
-          username: selectedDatabase.username,
-          password: selectedDatabase.password,
-        }),
-      });
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Metadata fetch failed:", response.status, errorText);
+            throw new Error(
+              `Failed to fetch metadata: ${response.status} - ${errorText}`
+            );
+          }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Metadata fetch failed:", response.status, errorText);
-        throw new Error(
-          `Failed to fetch metadata: ${response.status} - ${errorText}`
-        );
-      }
+          interface DatabaseMetadata {
+            [key: string]: Array<[string, string]>;
+          }
 
-      interface DatabaseMetadata {
-        [key: string]: Array<[string, string]>;
-      }
+          const data: DatabaseMetadata = await response.json();
+          console.log("Raw metadata response:", data);
 
-      const data: DatabaseMetadata = await response.json();
-      console.log("Raw metadata response:", data);
+          const formattedMetadata = Object.entries(data).map(
+            ([tableName, columns]) => ({
+              name: tableName,
+              columns: columns.map(([name, type]) => ({ name, type })),
+            })
+          );
+          console.log("Formatted metadata:", formattedMetadata);
+          setTableMetadata(formattedMetadata);
+        } catch (error) {
+          console.error("Error fetching metadata:", error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          toast.error(`Failed to fetch database metadata: ${errorMessage}`);
+        }
+      };
 
-      const formattedMetadata = Object.entries(data).map(
-        ([tableName, columns]) => ({
-          name: tableName,
-          columns: columns.map(([name, type]) => ({ name, type })),
-        })
-      );
-      console.log("Formatted metadata:", formattedMetadata);
-      setTableMetadata(formattedMetadata);
-    } catch (error) {
-      console.error("Error fetching metadata:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Failed to fetch database metadata: ${errorMessage}`);
+      fetchMetadata();
     }
   }, [selectedDatabase]);
 
@@ -373,17 +373,6 @@ export default function HomePage() {
       localStorage.setItem("workspaceTitle", newTitle);
       setIsEditingWorkspace(false);
     }
-  };
-
-  const generateChatTitle = (message: string): string => {
-    const cleanMessage = message.toLowerCase().trim();
-
-    // If message is too long, truncate it
-    if (message.length > 30) {
-      return message.slice(0, 30) + "...";
-    }
-
-    return cleanMessage;
   };
 
   const generateQueryTitle = (query: string): string => {
@@ -494,144 +483,156 @@ export default function HomePage() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
+  const handleSendMessage = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!inputMessage.trim()) return;
 
-    try {
-      const newMessage: Message = {
-        role: "user",
-        content: inputMessage,
-      };
+      try {
+        const newMessage: Message = {
+          role: "user",
+          content: inputMessage,
+        };
 
-      // Find current chat session
-      const currentSession = chatSessions.find((s) => s.id === currentChatId);
-      if (!currentSession) return;
+        // Find current chat session
+        const currentSession = chatSessions.find((s) => s.id === currentChatId);
+        if (!currentSession) return;
 
-      // Create updated messages array
-      const updatedMessages = [...currentSession.messages, newMessage];
+        // Create updated messages array
+        const updatedMessages = [...currentSession.messages, newMessage];
 
-      // Generate title from first message if this is the first user message
-      const updatedTitle =
-        currentSession.messages.length === 0
-          ? inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "..." : "")
-          : currentSession.title;
+        // Generate title from first message if this is the first user message
+        const updatedTitle =
+          currentSession.messages.length === 0
+            ? inputMessage.slice(0, 30) +
+              (inputMessage.length > 30 ? "..." : "")
+            : currentSession.title;
 
-      // Create updated chat data
-      const updatedChat = {
-        ...currentSession,
-        messages: updatedMessages,
-        title: updatedTitle,
-        createdAt: currentSession.createdAt.toISOString(),
-      };
+        // Create updated chat data
+        const updatedChat = {
+          ...currentSession,
+          messages: updatedMessages,
+          title: updatedTitle,
+          createdAt: currentSession.createdAt.toISOString(),
+        };
 
-      // Update messages state
-      setMessages(updatedMessages);
-      setInputMessage("");
+        // Update messages state
+        setMessages(updatedMessages);
+        setInputMessage("");
 
-      // Update chat sessions state with new title
-      setChatSessions((prev) =>
-        prev.map((session) =>
-          session.id === currentChatId
-            ? {
-                ...updatedChat,
-                createdAt: new Date(updatedChat.createdAt),
-              }
-            : session
-        )
-      );
-
-      // Save updated chat to backend
-      await fetch("http://localhost:8000/api/v1/chats", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedChat),
-      });
-
-      // Extract table references from the message
-      const tableRefs =
-        inputMessage.match(/@(\w+)(?:\.(\w+))?/g)?.map((ref) => {
-          const [table, column] = ref.slice(1).split(".");
-          return { table, column };
-        }) || [];
-
-      // Get assistant response with metadata
-      const response = await fetch("http://localhost:8000/api/v1/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: inputMessage,
-          history: updatedMessages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          metadata: {
-            tables: tableRefs.map((ref) => ({
-              name: ref.table,
-              columns: ref.column
-                ? [ref.column]
-                : tableMetadata
-                    .find((t) => t.name === ref.table)
-                    ?.columns.map((c) => c.name) || [],
-            })),
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to send message: ${response.status} - ${errorText}`
+        // Update chat sessions state with new title
+        setChatSessions((prev) =>
+          prev.map((session) =>
+            session.id === currentChatId
+              ? {
+                  ...updatedChat,
+                  createdAt: new Date(updatedChat.createdAt),
+                }
+              : session
+          )
         );
+
+        // Save updated chat to backend
+        await fetch("http://localhost:8000/api/v1/chats", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedChat),
+        });
+
+        // Extract table references from the message
+        const tableRefs =
+          inputMessage.match(/@(\w+)(?:\.(\w+))?/g)?.map((ref) => {
+            const [table, column] = ref.slice(1).split(".");
+            return { table, column };
+          }) || [];
+
+        // Get assistant response with metadata
+        const response = await fetch("http://localhost:8000/api/v1/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: inputMessage,
+            history: updatedMessages.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
+            metadata: {
+              tables: tableRefs.map((ref) => ({
+                name: ref.table,
+                columns: ref.column
+                  ? [ref.column]
+                  : tableMetadata
+                      .find((t) => t.name === ref.table)
+                      ?.columns.map((c) => c.name) || [],
+              })),
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Failed to send message: ${response.status} - ${errorText}`
+          );
+        }
+
+        const data = await response.json();
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: data.response,
+        };
+
+        // Update messages with assistant's response
+        const finalMessages = [...updatedMessages, assistantMessage];
+        setMessages(finalMessages);
+
+        // Update chat session with assistant's response
+        const finalUpdatedChat = {
+          ...updatedChat,
+          messages: finalMessages,
+        };
+
+        // Save final updated chat to backend
+        await fetch("http://localhost:8000/api/v1/chats", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(finalUpdatedChat),
+        });
+
+        // Update chat sessions state
+        setChatSessions((prev) =>
+          prev.map((session) =>
+            session.id === currentChatId
+              ? {
+                  ...finalUpdatedChat,
+                  createdAt: new Date(finalUpdatedChat.createdAt),
+                }
+              : session
+          )
+        );
+      } catch (error: unknown) {
+        console.error("Full error:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "An error occurred";
+        toast.error(errorMessage);
       }
-
-      const data = await response.json();
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.response,
-      };
-
-      // Update messages with assistant's response
-      const finalMessages = [...updatedMessages, assistantMessage];
-      setMessages(finalMessages);
-
-      // Update chat session with assistant's response
-      const finalUpdatedChat = {
-        ...updatedChat,
-        messages: finalMessages,
-      };
-
-      // Save final updated chat to backend
-      await fetch("http://localhost:8000/api/v1/chats", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(finalUpdatedChat),
-      });
-
-      // Update chat sessions state
-      setChatSessions((prev) =>
-        prev.map((session) =>
-          session.id === currentChatId
-            ? {
-                ...finalUpdatedChat,
-                createdAt: new Date(finalUpdatedChat.createdAt),
-              }
-            : session
-        )
-      );
-    } catch (error: unknown) {
-      console.error("Full error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "An error occurred";
-      toast.error(errorMessage);
-    }
-  };
+    },
+    [
+      inputMessage,
+      chatSessions,
+      currentChatId,
+      tableMetadata,
+      setMessages,
+      setInputMessage,
+      setChatSessions,
+    ]
+  );
 
   useEffect(() => {
     if (messagesEndRef.current) {
