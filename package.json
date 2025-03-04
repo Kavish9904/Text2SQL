@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export"
+    "build": "next build"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
