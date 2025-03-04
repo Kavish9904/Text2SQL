@@ -39,6 +39,7 @@ import { toast } from "react-hot-toast";
 import { TableSuggestions } from "@/components/ui/table-suggestions";
 import { CommandSuggestions } from "@/components/ui/command-suggestions";
 import { ChartView } from "@/components/ui/chart-view";
+import { apiUrl } from "@/lib/api";
 
 type Message = {
   role: "user" | "assistant";
@@ -257,7 +258,7 @@ export default function HomePage() {
     // Load chat history when component mounts
     const loadChatHistory = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/v1/chats");
+        const response = await fetch(`${apiUrl}/api/v1/chats`);
         if (!response.ok) {
           throw new Error("Failed to load chat history");
         }
@@ -309,22 +310,19 @@ export default function HomePage() {
       const fetchMetadata = async () => {
         try {
           console.log("Fetching metadata for database:", selectedDatabase.name);
-          const response = await fetch(
-            "http://localhost:8000/api/v1/metadata",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                host: selectedDatabase.host,
-                port: selectedDatabase.port,
-                database: selectedDatabase.database,
-                username: selectedDatabase.username,
-                password: selectedDatabase.password,
-              }),
-            }
-          );
+          const response = await fetch(`${apiUrl}/api/v1/metadata`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              host: selectedDatabase.host,
+              port: selectedDatabase.port,
+              database: selectedDatabase.database,
+              username: selectedDatabase.username,
+              password: selectedDatabase.password,
+            }),
+          });
 
           if (!response.ok) {
             const errorText = await response.text();
@@ -456,7 +454,7 @@ export default function HomePage() {
       };
 
       // Save new chat to backend
-      const response = await fetch("http://localhost:8000/api/v1/chats", {
+      const response = await fetch(`${apiUrl}/api/v1/chats`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -536,7 +534,7 @@ export default function HomePage() {
         );
 
         // Save updated chat to backend
-        await fetch("http://localhost:8000/api/v1/chats", {
+        await fetch(`${apiUrl}/api/v1/chats`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -552,7 +550,7 @@ export default function HomePage() {
           }) || [];
 
         // Get assistant response with metadata
-        const response = await fetch("http://localhost:8000/api/v1/chat", {
+        const response = await fetch(`${apiUrl}/api/v1/chat`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -600,7 +598,7 @@ export default function HomePage() {
         };
 
         // Save final updated chat to backend
-        await fetch("http://localhost:8000/api/v1/chats", {
+        await fetch(`${apiUrl}/api/v1/chats`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -968,12 +966,9 @@ export default function HomePage() {
 
     try {
       // Delete chat from backend
-      const response = await fetch(
-        `http://localhost:8000/api/v1/chats/${sessionId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/v1/chats/${sessionId}`, {
+        method: "DELETE",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to delete chat");
@@ -1020,7 +1015,7 @@ export default function HomePage() {
         password: selectedDatabase.password,
       };
 
-      const response = await fetch("http://localhost:8000/api/v1/query", {
+      const response = await fetch(`${apiUrl}/api/v1/query`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1101,9 +1096,7 @@ export default function HomePage() {
   const switchChat = async (sessionId: string) => {
     try {
       // Load chat from backend
-      const response = await fetch(
-        `http://localhost:8000/api/v1/chats/${sessionId}`
-      );
+      const response = await fetch(`${apiUrl}/api/v1/chats/${sessionId}`);
       if (!response.ok) {
         throw new Error("Failed to load chat");
       }
@@ -1131,7 +1124,7 @@ export default function HomePage() {
 
   const refreshChatHistory = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/chats");
+      const response = await fetch(`${apiUrl}/api/v1/chats`);
       if (!response.ok) {
         throw new Error("Failed to load chat history");
       }

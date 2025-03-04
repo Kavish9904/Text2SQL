@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { apiUrl } from "@/lib/api";
 
 export default function PostgresConnectPage() {
   const router = useRouter();
@@ -44,25 +45,22 @@ export default function PostgresConnectPage() {
     setTesting(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/test-connection",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: "postgresql",
-            display_name: formData.displayName,
-            host: formData.hostAddress,
-            port: parseInt(formData.port),
-            database: formData.database,
-            username: formData.username,
-            password: formData.password,
-            ip_whitelist: ipAddresses,
-          }),
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/test-connection`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "postgresql",
+          display_name: formData.displayName,
+          host: formData.hostAddress,
+          port: parseInt(formData.port),
+          database: formData.database,
+          username: formData.username,
+          password: formData.password,
+          ip_whitelist: ipAddresses,
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
