@@ -304,8 +304,8 @@ export default function HomePage() {
     }
   }, [isAuthenticated]);
 
-  // Modify the fetchTableMetadata function with proper typing
-  const fetchTableMetadata = async () => {
+  // Wrap 'fetchTableMetadata' in useCallback to prevent it from changing on every render
+  const fetchTableMetadata = useCallback(async () => {
     if (!selectedDatabase) {
       console.log("No database selected");
       return;
@@ -356,14 +356,7 @@ export default function HomePage() {
         error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to fetch database metadata: ${errorMessage}`);
     }
-  };
-
-  // Add effect to fetch metadata when database is selected
-  useEffect(() => {
-    if (selectedDatabase) {
-      fetchTableMetadata();
-    }
-  }, [selectedDatabase, fetchTableMetadata]);
+  }, [selectedDatabase]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const content = e.target.value;
