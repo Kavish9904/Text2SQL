@@ -29,11 +29,28 @@ app = FastAPI()
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Replace with your frontend URL
+    allow_origins=[
+        "http://localhost:3000",
+        "https://frontend.onrender.com",  # Replace with your actual frontend URL
+        "*"  # Temporarily allow all origins for testing
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def root():
+    return {
+        "message": "Welcome to the SQL Assistant API",
+        "version": "1.0",
+        "endpoints": {
+            "/": "Root endpoint (GET)",
+            "/api/test-connection": "Test database connection (POST)",
+            "/api/v1/query": "Execute SQL queries (POST)",
+            "/api/v1/chat": "Chat with SQL assistant (POST)"
+        }
+    }
 
 class DatabaseConnection(BaseModel):
     display_name: str
