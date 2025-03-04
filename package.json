@@ -25,7 +25,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mkdir -p /opt/render/project/src/.next/standalone && cp -r .next/standalone/* /opt/render/project/src/.next/standalone/ && cp -r .next/static /opt/render/project/src/.next/standalone/_next/"
+    "build": "next build"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
