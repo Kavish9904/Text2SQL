@@ -21,22 +21,17 @@
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
-    "critters": "^0.0.20"
-  },
-  "scripts": {
-    "dev": "next dev",
-    "build": "npm install && npm install -D tailwindcss@latest postcss@latest autoprefixer@latest && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/"
-  },
-  "devDependencies": {
+    "critters": "^0.0.20",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "typescript": "^5.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "14.1.0",
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1"
+    "eslint-config-next": "14.1.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm ci && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/"
   },
   "optionalDependencies": {
     "@next/swc-linux-x64-gnu": "14.1.0",
