@@ -42,6 +42,7 @@ services:
     rootDir: my-app
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    publishDir: .next
     envVars:
       - key: NODE_ENV
         value: production
