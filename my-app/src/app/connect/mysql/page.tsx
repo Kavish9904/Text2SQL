@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection, SQLConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -83,16 +83,17 @@ export default function MySQLConnectPage() {
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.host === formData.hostAddress &&
-          conn.database === formData.database &&
-          conn.username === formData.username
+          conn.type === "mysql" &&
+          (conn as SQLConnection).host === formData.hostAddress &&
+          (conn as SQLConnection).database === formData.database &&
+          (conn as SQLConnection).username === formData.username
       );
 
       if (isDuplicate) {
         throw new Error("This database connection already exists.");
       }
 
-      const dbConnection: DatabaseConnection = {
+      const dbConnection: SQLConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "mysql",
