@@ -40,10 +40,7 @@ services:
     name: frontend
     env: node
     rootDir: my-app
-    buildCommand: |
-      npm install
-      npm run build
-      cp -r .next build
+    buildCommand: npm install && npm run build && mkdir build && cp -r .next/* build/
     startCommand: npm run start
     publishDir: build
     envVars:
