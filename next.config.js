@@ -26,13 +26,14 @@ const nextConfig = {
       "@radix-ui/react-tabs",
     ],
   },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      tailwindcss: require.resolve("tailwindcss"),
-      postcss: require.resolve("postcss"),
-      autoprefixer: require.resolve("autoprefixer"),
-    };
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        module: false,
+      };
+    }
     return config;
   },
 };

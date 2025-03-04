@@ -26,11 +26,12 @@
     "eslint-config-next": "14.1.0",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "critters": "^0.0.20"
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm ci && next build"
+    "build": "npm install autoprefixer postcss tailwindcss critters eslint-config-next && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/"
   },
   "optionalDependencies": {
     "@next/swc-linux-x64-gnu": "14.1.0",
