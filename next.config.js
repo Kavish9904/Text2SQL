@@ -34,6 +34,16 @@ const nextConfig = {
         module: false,
       };
     }
+    config.resolve.modules = [
+      "node_modules",
+      "/opt/render/project/src/node_modules",
+    ];
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      tailwindcss: "/opt/render/project/src/node_modules/tailwindcss",
+      postcss: "/opt/render/project/src/node_modules/postcss",
+      autoprefixer: "/opt/render/project/src/node_modules/autoprefixer",
+    };
     return config;
   },
 };
