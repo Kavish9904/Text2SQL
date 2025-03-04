@@ -13,4 +13,4 @@ pymysql==1.1.0
 cryptography==42.0.2
 clickhouse-connect==0.7.0
 cloudflare-client==2.2.0
-turbodbc==4.9.0 
+pyodbc==5.0.1 
