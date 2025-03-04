@@ -4,27 +4,32 @@ import psycopg2
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# load_dotenv()
+# Try to load from .env file, but don't fail if it doesn't exist
+try:
+    load_dotenv()
+except Exception:
+    pass
 
 def fetch_api_key():
-    load_dotenv()
     api_key = os.getenv("OPENAI_APIKEY")
     if not api_key:
-        raise ValueError("API key not found in the environment.")
+        raise ValueError("OpenAI API key not found in environment variables. Please set OPENAI_APIKEY.")
     return api_key
 
-
 def fetch_credentials():
-    load_dotenv()
-    credentials = {
-        'PGHOST': os.getenv('PGHOST'),
-        'PGUSER': os.getenv('PGUSER'),
-        'PGPORT': os.getenv('PGPORT'),
-        'PGDATABASE': os.getenv('PGDATABASE'),
-        'PGPASSWORD': os.getenv('PGPASSWORD')
-    }
-    if not all(credentials.values()):
-        raise ValueError("Database credentials are incomplete in the environment.")
+    required_vars = ['PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGPORT']
+    credentials = {}
+    
+    missing_vars = []
+    for var in required_vars:
+        value = os.getenv(var)
+        if value is None:
+            missing_vars.append(var)
+        credentials[var] = value
+    
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+    
     return credentials
 
 

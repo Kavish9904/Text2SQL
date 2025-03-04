@@ -14,6 +14,18 @@ services:
         value: 3.11.0
       - key: PYTHONPATH
         value: /opt/render/project/src/backend
+      - key: OPENAI_APIKEY
+        sync: false
+      - key: PGHOST
+        sync: false
+      - key: PGUSER
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+      - key: PGDATABASE
+        sync: false
+      - key: PGPORT
+        sync: false
 
   - type: web
     name: frontend
