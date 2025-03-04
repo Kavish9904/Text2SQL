@@ -1,9 +1,9 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import debounce from "lodash/debounce";
 import {
   X,
   Pencil,
@@ -19,6 +19,7 @@ import {
   Settings,
   Check,
   Zap,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,9 +30,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { DatabaseConnection } from "@/types/database";
 import { toast } from "react-hot-toast";
+import { TableSuggestions } from "@/components/ui/table-suggestions";
+import { CommandSuggestions } from "@/components/ui/command-suggestions";
+import { ChartView } from "@/components/ui/chart-view";
 
 type Message = {
   role: "user" | "assistant";
@@ -55,6 +62,17 @@ type Query = {
 
 // Add type for table cell values
 type TableCellValue = string | number | boolean | null;
+
+// Add new types
+type TableMetadata = {
+  name: string;
+  columns: Array<{
+    name: string;
+    type: string;
+  }>;
+};
+
+type ChartType = "line" | "bar" | "pie";
 
 export default function HomePage() {
   const [workspaceTitle, setWorkspaceTitle] = useState("");
@@ -83,6 +101,12 @@ export default function HomePage() {
     Record<string, TableCellValue>[] | null
   >(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [showChart, setShowChart] = useState(false);
+  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [chartConfig, setChartConfig] = useState<{
+    xAxis: string;
+    yAxis: string;
+  } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -100,6 +124,66 @@ export default function HomePage() {
   const [currentChatId, setCurrentChatId] = useState<string>(
     () => chatSessions[0].id
   );
+
+  // Add new state for table suggestions
+  const [tableMetadata, setTableMetadata] = useState<TableMetadata[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState<{
+    top: number;
+    left: number;
+  }>({ top: 0, left: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Add new state for command suggestions
+  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
+  const commandSuggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Add debounced search
+  const debouncedSetShowSuggestions = useCallback(
+    debounce((value: boolean) => {
+      setShowSuggestions(value);
+    }, 50),
+    []
+  );
+
+  // Add new state for assistant width
+  const [assistantWidth, setAssistantWidth] = useState(320); // default width 320px
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Add resize handler functions
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isDragging) {
+        const windowWidth = window.innerWidth;
+        const newWidth = windowWidth - e.clientX;
+        // Limit the width between 280px and 600px
+        setAssistantWidth(Math.min(Math.max(280, newWidth), 600));
+      }
+    },
+    [isDragging]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseMove]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   useEffect(() => {
     const auth = localStorage.getItem("isAuthenticated") === "true";
@@ -219,6 +303,67 @@ export default function HomePage() {
       loadChatHistory();
     }
   }, [isAuthenticated]);
+
+  // Modify the fetchTableMetadata function with proper typing
+  const fetchTableMetadata = async () => {
+    if (!selectedDatabase) {
+      console.log("No database selected");
+      return;
+    }
+
+    try {
+      console.log("Fetching metadata for database:", selectedDatabase.name);
+      const response = await fetch("http://localhost:8000/api/v1/metadata", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          host: selectedDatabase.host,
+          port: selectedDatabase.port,
+          database: selectedDatabase.database,
+          username: selectedDatabase.username,
+          password: selectedDatabase.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Metadata fetch failed:", response.status, errorText);
+        throw new Error(
+          `Failed to fetch metadata: ${response.status} - ${errorText}`
+        );
+      }
+
+      interface DatabaseMetadata {
+        [key: string]: Array<[string, string]>;
+      }
+
+      const data: DatabaseMetadata = await response.json();
+      console.log("Raw metadata response:", data);
+
+      const formattedMetadata = Object.entries(data).map(
+        ([tableName, columns]) => ({
+          name: tableName,
+          columns: columns.map(([name, type]) => ({ name, type })),
+        })
+      );
+      console.log("Formatted metadata:", formattedMetadata);
+      setTableMetadata(formattedMetadata);
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to fetch database metadata: ${errorMessage}`);
+    }
+  };
+
+  // Add effect to fetch metadata when database is selected
+  useEffect(() => {
+    if (selectedDatabase) {
+      fetchTableMetadata();
+    }
+  }, [selectedDatabase]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const content = e.target.value;
@@ -412,7 +557,14 @@ export default function HomePage() {
         body: JSON.stringify(updatedChat),
       });
 
-      // Get assistant response
+      // Extract table references from the message
+      const tableRefs =
+        inputMessage.match(/@(\w+)(?:\.(\w+))?/g)?.map((ref) => {
+          const [table, column] = ref.slice(1).split(".");
+          return { table, column };
+        }) || [];
+
+      // Get assistant response with metadata
       const response = await fetch("http://localhost:8000/api/v1/chat", {
         method: "POST",
         headers: {
@@ -424,6 +576,16 @@ export default function HomePage() {
             role: msg.role,
             content: msg.content,
           })),
+          metadata: {
+            tables: tableRefs.map((ref) => ({
+              name: ref.table,
+              columns: ref.column
+                ? [ref.column]
+                : tableMetadata
+                    .find((t) => t.name === ref.table)
+                    ?.columns.map((c) => c.name) || [],
+            })),
+          },
         }),
       });
 
@@ -537,31 +699,270 @@ export default function HomePage() {
     );
   };
 
-  const renderAssistantInput = () => (
-    <div className="p-4 border-t border-gray-200">
-      <form onSubmit={handleSendMessage} className="relative">
-        <Input
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          placeholder="Type your Questions..."
-          className="pr-10 text-gray-900 placeholder:text-gray-600"
-          disabled={isLoading || !selectedDatabase}
-        />
-        <Button
-          type="submit"
-          variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400"
-          disabled={isLoading || !selectedDatabase}
-        >
-          {isLoading ? (
-            <div className="animate-spin">⌛</div>
-          ) : (
-            <ChevronRight className="h-4 w-4" />
+  // Update handleInputChange
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      const cursorPosition = e.target.selectionStart || 0;
+      setInputMessage(value);
+
+      // Check for @ symbol
+      const lastAtIndex = value.lastIndexOf("@", cursorPosition);
+      const nextSpaceIndex = value.indexOf(" ", lastAtIndex);
+      const isTypingAfterAt =
+        lastAtIndex !== -1 &&
+        (nextSpaceIndex === -1 || cursorPosition <= nextSpaceIndex);
+
+      // Check for / symbol
+      const lastSlashIndex = value.lastIndexOf("/", cursorPosition);
+      const nextSpaceAfterSlash = value.indexOf(" ", lastSlashIndex);
+      const isTypingAfterSlash =
+        lastSlashIndex !== -1 &&
+        (nextSpaceAfterSlash === -1 || cursorPosition <= nextSpaceAfterSlash);
+
+      if (isTypingAfterAt) {
+        const rect = e.target.getBoundingClientRect();
+        const textBeforeCursor = value.substring(0, cursorPosition);
+
+        // Create temporary span for width calculation
+        const tempSpan = document.createElement("span");
+        tempSpan.style.cssText = getComputedStyle(e.target).cssText;
+        tempSpan.style.visibility = "hidden";
+        tempSpan.style.position = "absolute";
+        tempSpan.style.whiteSpace = "pre";
+        tempSpan.textContent = textBeforeCursor;
+        document.body.appendChild(tempSpan);
+
+        // Calculate position
+        const textWidth = tempSpan.offsetWidth;
+        document.body.removeChild(tempSpan);
+
+        // Calculate left position relative to input
+        const inputPadding =
+          parseInt(getComputedStyle(e.target).paddingLeft) || 0;
+        const suggestionsLeft = Math.min(
+          rect.left + inputPadding + textWidth,
+          rect.right - 300 // Ensure suggestions don't go off-screen
+        );
+
+        setCursorPosition({
+          top: rect.bottom + window.scrollY,
+          left: suggestionsLeft,
+        });
+
+        setShowSuggestions(true);
+        setShowCommandSuggestions(false);
+      } else if (isTypingAfterSlash) {
+        const rect = e.target.getBoundingClientRect();
+        const textBeforeCursor = value.substring(0, cursorPosition);
+
+        // Create temporary span for width calculation
+        const tempSpan = document.createElement("span");
+        tempSpan.style.cssText = getComputedStyle(e.target).cssText;
+        tempSpan.style.visibility = "hidden";
+        tempSpan.style.position = "absolute";
+        tempSpan.style.whiteSpace = "pre";
+        tempSpan.textContent = textBeforeCursor;
+        document.body.appendChild(tempSpan);
+
+        // Calculate position
+        const textWidth = tempSpan.offsetWidth;
+        document.body.removeChild(tempSpan);
+
+        // Calculate left position relative to input
+        const inputPadding =
+          parseInt(getComputedStyle(e.target).paddingLeft) || 0;
+        const suggestionsLeft = Math.min(
+          rect.left + inputPadding + textWidth,
+          rect.right - 300 // Ensure suggestions don't go off-screen
+        );
+
+        setCursorPosition({
+          top: rect.bottom + window.scrollY,
+          left: suggestionsLeft,
+        });
+
+        setShowCommandSuggestions(true);
+        setShowSuggestions(false);
+      } else {
+        setShowSuggestions(false);
+        setShowCommandSuggestions(false);
+      }
+    },
+    []
+  );
+
+  // Add command suggestion handler
+  const handleCommandSelect = useCallback(
+    (command: string) => {
+      const currentValue = inputMessage;
+      const cursorPos = inputRef.current?.selectionStart || 0;
+      const lastSlashBeforeCursor = currentValue.lastIndexOf(
+        "/",
+        cursorPos - 1
+      );
+
+      if (lastSlashBeforeCursor !== -1) {
+        // Find the end of the current command (next space or end of string)
+        const nextSpace = currentValue.indexOf(" ", lastSlashBeforeCursor);
+        const endPos = nextSpace === -1 ? currentValue.length : nextSpace;
+
+        // Replace the current command with the selected command
+        const newValue =
+          currentValue.substring(0, lastSlashBeforeCursor) +
+          command +
+          " " +
+          currentValue.substring(endPos).trimLeft();
+
+        setInputMessage(newValue);
+
+        // Focus and move cursor after the inserted command
+        if (inputRef.current) {
+          const newCursorPos = lastSlashBeforeCursor + command.length + 1; // +1 for space
+          inputRef.current.focus();
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            }
+          });
+        }
+      }
+
+      setShowCommandSuggestions(false);
+    },
+    [inputMessage]
+  );
+
+  // Optimize suggestion selection
+  const handleSuggestionSelect = useCallback(
+    (value: string) => {
+      const currentValue = inputMessage;
+      const cursorPos = inputRef.current?.selectionStart || 0;
+      const lastAtBeforeCursor = currentValue.lastIndexOf("@", cursorPos - 1);
+
+      if (lastAtBeforeCursor !== -1) {
+        // Find the end of the current suggestion (next space or end of string)
+        const nextSpace = currentValue.indexOf(" ", lastAtBeforeCursor);
+        const endPos = nextSpace === -1 ? currentValue.length : nextSpace;
+
+        // Replace the current suggestion with the selected value
+        const newValue =
+          currentValue.substring(0, lastAtBeforeCursor) +
+          "@" +
+          value +
+          " " +
+          currentValue.substring(endPos).trimLeft();
+
+        setInputMessage(newValue);
+
+        // Focus and move cursor after the inserted suggestion
+        if (inputRef.current) {
+          const newCursorPos = lastAtBeforeCursor + value.length + 2; // +2 for @ and space
+          inputRef.current.focus();
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            }
+          });
+        }
+      }
+
+      setShowSuggestions(false);
+    },
+    [inputMessage]
+  );
+
+  // Update renderAssistantInput
+  const renderAssistantInput = useCallback(
+    () => (
+      <div className="p-4 border-t border-gray-200">
+        <form onSubmit={handleSendMessage} className="relative">
+          <Input
+            ref={inputRef}
+            value={inputMessage}
+            onChange={handleInputChange}
+            placeholder="@ for objects or / for commands"
+            className="pr-10 text-gray-900 placeholder:text-gray-600"
+            disabled={isLoading || !selectedDatabase}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowSuggestions(false);
+                setShowCommandSuggestions(false);
+              }
+            }}
+            onClick={(e) => {
+              const value = (e.target as HTMLInputElement).value;
+              const lastAtIndex = value.lastIndexOf("@");
+              const lastSlashIndex = value.lastIndexOf("/");
+              if (lastAtIndex !== -1) {
+                debouncedSetShowSuggestions(true);
+              } else if (lastSlashIndex !== -1) {
+                setShowCommandSuggestions(true);
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400"
+            disabled={isLoading || !selectedDatabase}
+          >
+            {isLoading ? (
+              <div className="animate-spin">⌛</div>
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+          {tableMetadata && tableMetadata.length > 0 && (
+            <TableSuggestions
+              isOpen={showSuggestions}
+              onClose={() => setShowSuggestions(false)}
+              tables={tableMetadata}
+              onSelect={handleSuggestionSelect}
+              triggerRef={suggestionsRef as React.RefObject<HTMLElement>}
+            />
           )}
-        </Button>
-      </form>
-    </div>
+          <CommandSuggestions
+            isOpen={showCommandSuggestions}
+            onClose={() => setShowCommandSuggestions(false)}
+            onSelect={handleCommandSelect}
+            triggerRef={commandSuggestionsRef as React.RefObject<HTMLElement>}
+          />
+          <div
+            ref={suggestionsRef}
+            style={{
+              position: "fixed",
+              top: `${cursorPosition.top}px`,
+              left: `${cursorPosition.left}px`,
+              zIndex: 1000,
+            }}
+          />
+          <div
+            ref={commandSuggestionsRef}
+            style={{
+              position: "fixed",
+              top: `${cursorPosition.top}px`,
+              left: `${cursorPosition.left}px`,
+              zIndex: 1000,
+            }}
+          />
+        </form>
+      </div>
+    ),
+    [
+      inputMessage,
+      isLoading,
+      selectedDatabase,
+      showSuggestions,
+      showCommandSuggestions,
+      tableMetadata,
+      cursorPosition,
+      handleInputChange,
+      handleSendMessage,
+      handleSuggestionSelect,
+      handleCommandSelect,
+    ]
   );
 
   const deleteChat = async (sessionId: string, e: React.MouseEvent) => {
@@ -758,6 +1159,21 @@ export default function HomePage() {
       toast.error("Failed to load chat history");
     }
   };
+
+  // Add new function to check if a value is numeric
+  const isNumeric = (value: any) => {
+    return !isNaN(parseFloat(value)) && isFinite(value);
+  };
+
+  // Add new function to get numeric columns
+  const getNumericColumns = () => {
+    if (!queryResults || queryResults.length === 0) return [];
+    const firstRow = queryResults[0];
+    return Object.keys(firstRow).filter((key) => isNumeric(firstRow[key]));
+  };
+
+  const [isQueryEditorExpanded, setIsQueryEditorExpanded] = useState(false);
+  const [isResultsExpanded, setIsResultsExpanded] = useState(false);
 
   if (!isAuthenticated) {
     return null;
@@ -1005,15 +1421,30 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0">
-              <div className="flex justify-between p-3 border-b border-gray-200">
+            <div
+              className={`flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0 ${
+                isQueryEditorExpanded
+                  ? "fixed inset-0 z-50 m-0 rounded-none"
+                  : ""
+              }`}
+            >
+              <div className="flex justify-between p-3 border-b border-gray-200 bg-white">
                 <div className="text-gray-900 font-semibold tracking-wide truncate">
                   {activeQueryId
                     ? queries.find((q) => q.id === activeQueryId)?.title ||
                       "Query Editor"
                     : "New Query"}
                 </div>
-                <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-100"
+                  onClick={() =>
+                    setIsQueryEditorExpanded(!isQueryEditorExpanded)
+                  }
+                >
+                  <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                </Button>
               </div>
               <div className="flex h-[calc(100%-48px)]">
                 <div className="w-12 flex-none overflow-hidden relative border-r bg-white">
@@ -1049,12 +1480,155 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0">
-              <div className="flex justify-between p-3 border-b border-gray-200">
+            <div
+              className={`flex-1 border border-gray-200 rounded-lg overflow-hidden m-4 min-h-0 ${
+                isResultsExpanded ? "fixed inset-0 z-50 m-0 rounded-none" : ""
+              }`}
+            >
+              <div className="flex justify-between p-3 border-b border-gray-200 bg-white">
                 <div className="text-gray-900 font-semibold tracking-wide">
                   Results
                 </div>
-                <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                <div className="flex items-center gap-2">
+                  {queryResults && queryResults.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-gray-100"
+                        >
+                          <BarChart2 className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-[200px] bg-white border border-gray-200 shadow-lg"
+                      >
+                        <DropdownMenuLabel className="text-gray-900 font-semibold px-3 py-2">
+                          Chart Type
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-gray-200" />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setChartType("bar");
+                            setShowChart(true);
+                            if (!chartConfig && queryResults) {
+                              const numericColumns = getNumericColumns();
+                              if (numericColumns.length > 0) {
+                                const columns = Object.keys(queryResults[0]);
+                                setChartConfig({
+                                  xAxis: columns[0],
+                                  yAxis: numericColumns[0],
+                                });
+                              }
+                            }
+                          }}
+                          className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2"
+                        >
+                          Bar Chart
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setChartType("line");
+                            setShowChart(true);
+                            if (!chartConfig && queryResults) {
+                              const numericColumns = getNumericColumns();
+                              if (numericColumns.length > 0) {
+                                const columns = Object.keys(queryResults[0]);
+                                setChartConfig({
+                                  xAxis: columns[0],
+                                  yAxis: numericColumns[0],
+                                });
+                              }
+                            }
+                          }}
+                          className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2"
+                        >
+                          Line Chart
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setChartType("pie");
+                            setShowChart(true);
+                            if (!chartConfig && queryResults) {
+                              const numericColumns = getNumericColumns();
+                              if (numericColumns.length > 0) {
+                                const columns = Object.keys(queryResults[0]);
+                                setChartConfig({
+                                  xAxis: columns[0],
+                                  yAxis: numericColumns[0],
+                                });
+                              }
+                            }
+                          }}
+                          className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2"
+                        >
+                          Pie Chart
+                        </DropdownMenuItem>
+                        {showChart && (
+                          <>
+                            <DropdownMenuSeparator className="bg-gray-200" />
+                            <DropdownMenuLabel className="text-gray-900 font-semibold px-3 py-2">
+                              Configure Axes
+                            </DropdownMenuLabel>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2">
+                                X Axis
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="bg-white border border-gray-200 shadow-lg">
+                                {queryResults &&
+                                  Object.keys(queryResults[0]).map((column) => (
+                                    <DropdownMenuItem
+                                      key={column}
+                                      onClick={() =>
+                                        setChartConfig((prev) => ({
+                                          ...prev!,
+                                          xAxis: column,
+                                        }))
+                                      }
+                                      className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2"
+                                    >
+                                      {column}
+                                    </DropdownMenuItem>
+                                  ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2">
+                                Y Axis
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="bg-white border border-gray-200 shadow-lg">
+                                {getNumericColumns().map((column) => (
+                                  <DropdownMenuItem
+                                    key={column}
+                                    onClick={() =>
+                                      setChartConfig((prev) => ({
+                                        ...prev!,
+                                        yAxis: column,
+                                      }))
+                                    }
+                                    className="text-gray-900 hover:bg-gray-50 cursor-pointer px-3 py-2"
+                                  >
+                                    {column}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hover:bg-gray-100"
+                    onClick={() => setIsResultsExpanded(!isResultsExpanded)}
+                  >
+                    <Maximize2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                  </Button>
+                </div>
               </div>
               <div className="h-[calc(100%-48px)] overflow-auto">
                 {queryError ? (
@@ -1065,47 +1639,57 @@ export default function HomePage() {
                     <div className="text-sm text-gray-600">{queryError}</div>
                   </div>
                 ) : queryResults ? (
-                  <div className="relative w-full h-full overflow-auto">
-                    <div className="inline-block min-w-full align-middle">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            {Object.keys(queryResults[0]).map((key) => (
-                              <th
-                                key={key}
-                                className="sticky top-0 z-10 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 bg-gray-50 border-b border-gray-200 whitespace-nowrap"
-                                style={{ minWidth: "150px" }}
-                              >
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {queryResults.map((row, i) => (
-                            <tr key={i} className="hover:bg-gray-50">
-                              {Object.values(row).map(
-                                (value: TableCellValue, j) => (
-                                  <td
-                                    key={j}
-                                    className="px-3 py-2 text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap"
-                                    style={{ minWidth: "150px" }}
-                                  >
-                                    <div
-                                      className="truncate"
-                                      title={value?.toString() ?? "null"}
-                                    >
-                                      {value?.toString() ?? "null"}
-                                    </div>
-                                  </td>
-                                )
-                              )}
+                  <>
+                    {showChart && chartConfig && (
+                      <ChartView
+                        type={chartType}
+                        data={queryResults}
+                        xAxis={chartConfig.xAxis}
+                        yAxis={chartConfig.yAxis}
+                      />
+                    )}
+                    <div className="relative w-full h-full overflow-auto">
+                      <div className="inline-block min-w-full align-middle">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              {Object.keys(queryResults[0]).map((key) => (
+                                <th
+                                  key={key}
+                                  className="sticky top-0 z-10 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 bg-gray-50 border-b border-gray-200 whitespace-nowrap"
+                                  style={{ minWidth: "150px" }}
+                                >
+                                  {key}
+                                </th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {queryResults.map((row, i) => (
+                              <tr key={i} className="hover:bg-gray-50">
+                                {Object.values(row).map(
+                                  (value: TableCellValue, j) => (
+                                    <td
+                                      key={j}
+                                      className="px-3 py-2 text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap"
+                                      style={{ minWidth: "150px" }}
+                                    >
+                                      <div
+                                        className="truncate"
+                                        title={value?.toString() ?? "null"}
+                                      >
+                                        {value?.toString() ?? "null"}
+                                      </div>
+                                    </td>
+                                  )
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-4">
                     <div className="mb-2">No results to display</div>
@@ -1117,114 +1701,133 @@ export default function HomePage() {
           </div>
 
           {isAssistantVisible && (
-            <div className="w-80 min-w-[20rem] border-l border-gray-200 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-gray-200 flex items-center justify-between relative shrink-0">
-                <DropdownMenu
-                  onOpenChange={(open) => {
-                    if (open) {
-                      refreshChatHistory();
-                    }
-                  }}
-                >
-                  <DropdownMenuTrigger asChild>
+            <>
+              {/* Add draggable divider */}
+              <div
+                className={`w-1 bg-gray-200 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors ${
+                  isDragging ? "bg-blue-600" : ""
+                }`}
+                onMouseDown={handleMouseDown}
+              />
+
+              {/* Update assistant panel with dynamic width */}
+              <div
+                className="border-l border-gray-200 flex flex-col overflow-hidden"
+                style={{
+                  width: `${assistantWidth}px`,
+                  minWidth: "280px",
+                  maxWidth: "600px",
+                  transition: isDragging ? "none" : "width 0.1s ease-out",
+                }}
+              >
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between relative shrink-0">
+                  <DropdownMenu
+                    onOpenChange={(open) => {
+                      if (open) {
+                        refreshChatHistory();
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-3 hover:bg-gray-100"
+                        onClick={() => refreshChatHistory()}
+                      >
+                        <History className="h-4 w-4 text-gray-600" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-[250px] bg-white border border-gray-200 shadow-lg"
+                      sideOffset={5}
+                    >
+                      <DropdownMenuLabel className="px-3 py-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          Chat History
+                        </span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="h-[1px] bg-gray-200" />
+                      {chatSessions.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">
+                          No chat history
+                        </div>
+                      ) : (
+                        chatSessions.map((session) => (
+                          <DropdownMenuItem
+                            key={session.id}
+                            onSelect={() => switchChat(session.id)}
+                            className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${
+                              currentChatId === session.id ? "bg-gray-50" : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <MessageSquare className="h-4 w-4 text-gray-900 flex-shrink-0" />
+                              <div className="flex flex-col flex-1 min-w-0">
+                                <span className="text-sm text-gray-900 truncate">
+                                  {session.title}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(
+                                    session.createdAt
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            {chatSessions.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 hover:bg-gray-200 rounded-full flex-shrink-0 ml-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteChat(session.id, e);
+                                }}
+                              >
+                                <X className="h-3 w-3 text-gray-900" />
+                              </Button>
+                            )}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <div className="flex-1 flex justify-center">
+                    <span className="font-semibold tracking-wide text-gray-900">
+                      Assistant
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute left-3 hover:bg-gray-100"
-                      onClick={() => refreshChatHistory()}
+                      className="h-8 w-8"
+                      onClick={createNewChat}
                     >
-                      <History className="h-4 w-4 text-gray-600" />
+                      <Plus className="h-4 w-4 text-gray-500" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    className="w-[250px] bg-white border border-gray-200 shadow-lg"
-                    sideOffset={5}
-                  >
-                    <DropdownMenuLabel className="px-3 py-2">
-                      <span className="text-sm font-semibold text-gray-900">
-                        Chat History
-                      </span>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="h-[1px] bg-gray-200" />
-                    {chatSessions.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-500">
-                        No chat history
-                      </div>
-                    ) : (
-                      chatSessions.map((session) => (
-                        <DropdownMenuItem
-                          key={session.id}
-                          onSelect={() => switchChat(session.id)}
-                          className={`flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${
-                            currentChatId === session.id ? "bg-gray-50" : ""
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <MessageSquare className="h-4 w-4 text-gray-900 flex-shrink-0" />
-                            <div className="flex flex-col flex-1 min-w-0">
-                              <span className="text-sm text-gray-900 truncate">
-                                {session.title}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(
-                                  session.createdAt
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          {chatSessions.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 hover:bg-gray-200 rounded-full flex-shrink-0 ml-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteChat(session.id, e);
-                              }}
-                            >
-                              <X className="h-3 w-3 text-gray-900" />
-                            </Button>
-                          )}
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <div className="flex-1 flex justify-center">
-                  <span className="font-semibold tracking-wide text-gray-900">
-                    Assistant
-                  </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setIsAssistantVisible(false)}
+                    >
+                      <X className="h-4 w-4 text-gray-500" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={createNewChat}
-                  >
-                    <Plus className="h-4 w-4 text-gray-500" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setIsAssistantVisible(false)}
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                  </Button>
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {renderAssistantContent()}
+                  <div className="p-4 border-t border-gray-200 shrink-0">
+                    {renderAssistantInput()}
+                  </div>
                 </div>
               </div>
-
-              <div className="flex-1 overflow-hidden flex flex-col">
-                {renderAssistantContent()}
-                <div className="p-4 border-t border-gray-200 shrink-0">
-                  {renderAssistantInput()}
-                </div>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </div>

@@ -1,0 +1,23 @@
+{
+  "id": "88c63a6a-25ac-4a60-8042-68b9df246c23",
+  "messages": [
+    {
+      "role": "user",
+      "content": "@inventory.unit_price write a query"
+    },
+    {
+      "role": "assistant",
+      "content": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.item_id why"
+    },
+    {
+      "role": "assistant",
+      "content": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"
+    }
+  ],
+  "createdAt": "2025-03-03T19:38:06.603Z",
+  "title": "@inventory.unit_price write a ..."
+}

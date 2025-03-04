@@ -21,6 +21,8 @@ import json
 from script import * # fetch_api_key, fetch_credentials, create_db_connection, fetch_table_metadata, generate_sql_query, execute_query, determine_db_type
 import os
 from datetime import datetime
+import psycopg2
+import asyncpg
 
 app = FastAPI()
 
@@ -66,6 +68,13 @@ class ChatSession(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[Message]
+
+class DatabaseMetadataRequest(BaseModel):
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
 
 @app.post("/api/test-connection")
 async def test_connection(connection: DatabaseConnection):
@@ -142,9 +151,10 @@ async def handle_query(query_request: QueryRequest):
                     'password': query_request.password,
                     'database': query_request.database,
                     'port': query_request.port,
+                    'ssl_disabled': True  # Disable SSL for now to test connection
                 }
-                if '.mysql.database.azure.com' in query_request.host:
-                    config['ssl_disabled'] = False
+                
+                print("Connecting to MySQL with config:", {**config, 'password': '****'})  # Debug log
                 
                 conn = mysql.connector.connect(**config)
                 cursor = conn.cursor(dictionary=True)
@@ -428,4 +438,88 @@ async def delete_chat(chat_id: str):
         raise e
     except Exception as e:
         print(f"Error in delete_chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/metadata")
+async def get_metadata(request: DatabaseMetadataRequest):
+    try:
+        # Determine database type and establish connection
+        if '.postgres.database.azure.com' in request.host or request.port == 5432:
+            # PostgreSQL connection
+            conn = psycopg2.connect(
+                host=request.host,
+                user=request.username,
+                password=request.password,
+                database=request.database,
+                port=request.port,
+                sslmode='require' if '.postgres.database.azure.com' in request.host else None
+            )
+            
+            # Query to fetch table and column information
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    table_name,
+                    array_agg(ARRAY[column_name, data_type]) as columns
+                FROM information_schema.columns 
+                WHERE table_schema = 'public'
+                GROUP BY table_name;
+            """)
+            
+            # Format the results
+            metadata = {}
+            for table_name, columns in cursor.fetchall():
+                metadata[table_name] = columns
+            
+            cursor.close()
+            conn.close()
+            
+            return metadata
+
+        elif '.mysql.database.azure.com' in request.host or request.port == 3306:
+            # MySQL connection
+            conn = mysql.connector.connect(
+                host=request.host,
+                user=request.username,
+                password=request.password,
+                database=request.database,
+                port=request.port,
+                ssl_disabled=True
+            )
+            
+            cursor = conn.cursor()
+            
+            # Get all tables
+            cursor.execute("""
+                SELECT 
+                    TABLE_NAME,
+                    GROUP_CONCAT(CONCAT(COLUMN_NAME, ',', DATA_TYPE) SEPARATOR ';') as columns
+                FROM information_schema.columns 
+                WHERE table_schema = %s
+                GROUP BY TABLE_NAME;
+            """, (request.database,))
+            
+            # Format the results
+            metadata = {}
+            for table_name, columns_str in cursor.fetchall():
+                if columns_str:
+                    columns = []
+                    for col in columns_str.split(';'):
+                        name, type_ = col.split(',')
+                        columns.append([name, type_])
+                    metadata[table_name] = columns
+            
+            cursor.close()
+            conn.close()
+            
+            return metadata
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported database type. Currently supporting PostgreSQL and MySQL."
+            )
+
+    except Exception as e:
+        print(f"Error fetching metadata: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
