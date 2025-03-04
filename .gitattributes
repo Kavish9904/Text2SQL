@@ -1,1 +1,9 @@
 node_modules/@next/swc-win32-x64-msvc/next-swc.win32-x64-msvc.node filter=lfs diff=lfs merge=lfs -text
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',  // This will generate a static export
+  distDir: 'out',    // Specify the output directory
+}
+
+module.exports = nextConfig
