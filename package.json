@@ -20,7 +20,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build"
+    "build": "next build && mkdir -p build && cp -r .next/standalone/* build/ && cp -r .next/static build/_next/"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
