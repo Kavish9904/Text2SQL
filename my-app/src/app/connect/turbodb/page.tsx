@@ -92,24 +92,20 @@ export default function TurboDBConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast({
-        description:
-          "TurboDB connection successful! Redirecting to databases page...",
-      });
+      toast.success(
+        "TurboDB connection successful! Redirecting to databases page..."
+      );
 
       setTimeout(() => {
         router.push("/databases");
       }, 1500);
     } catch (error) {
       console.error("Connection error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to TurboDB. Please check your settings.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to TurboDB. Please check your settings."
+      );
     } finally {
       setTesting(false);
     }

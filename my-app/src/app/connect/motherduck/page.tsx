@@ -87,24 +87,20 @@ export default function MotherDuckConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast({
-        description:
-          "MotherDuck connection successful! Redirecting to databases page...",
-      });
+      toast.success(
+        "MotherDuck connection successful! Redirecting to databases page..."
+      );
 
       setTimeout(() => {
         router.push("/databases");
       }, 1500);
     } catch (error) {
       console.error("Connection error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to MotherDuck. Please check your settings.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to MotherDuck. Please check your settings."
+      );
     } finally {
       setTesting(false);
     }

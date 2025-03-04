@@ -110,24 +110,20 @@ export default function ClickHouseConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast({
-        description:
-          "ClickHouse connection successful! Redirecting to databases page...",
-      });
+      toast.success(
+        "ClickHouse connection successful! Redirecting to databases page..."
+      );
 
       setTimeout(() => {
         router.push("/databases");
       }, 1500);
     } catch (error) {
       console.error("Connection error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to the ClickHouse database. Please check your settings.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to ClickHouse database. Please check your settings."
+      );
     } finally {
       setTesting(false);
     }
