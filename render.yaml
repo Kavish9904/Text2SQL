@@ -6,10 +6,14 @@ services:
       apt-get update
       apt-get install -y unixodbc unixodbc-dev
       cd backend && pip install -r requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: |
+      cd backend
+      python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
 
   - type: web
     name: frontend
