@@ -15,7 +15,8 @@
     "tailwind-merge": "^3.0.2",
     "autoprefixer": "latest",
     "postcss": "latest",
-    "tailwindcss": "latest"
+    "tailwindcss": "latest",
+    "critters": "latest"
   },
   "scripts": {
     "dev": "next dev",
