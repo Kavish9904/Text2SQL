@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection, SQLConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, testApiConnection } from "@/lib/api";
 
 export default function PostgresConnectPage() {
   const router = useRouter();
@@ -45,7 +45,6 @@ export default function PostgresConnectPage() {
     setTesting(true);
 
     try {
-      // First test the API connection
       const apiConnected = await testApiConnection();
       if (!apiConnected) {
         throw new Error(
@@ -53,7 +52,6 @@ export default function PostgresConnectPage() {
         );
       }
 
-      // Test database connection
       const response = await fetch(`${apiUrl}/api/test-connection`, {
         method: "POST",
         headers: {
@@ -75,28 +73,27 @@ export default function PostgresConnectPage() {
         const errorData = await response.json();
         throw new Error(
           errorData.detail ||
-            "Failed to connect to database. Please check your credentials and ensure the database is accessible."
+            "Failed to connect to PostgreSQL database. Please check your credentials and ensure the database is accessible."
         );
       }
 
-      // Check for duplicate connections
       const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.host === formData.hostAddress &&
-          conn.database === formData.database &&
-          conn.username === formData.username
+          conn.type === "postgresql" &&
+          (conn as SQLConnection).host === formData.hostAddress &&
+          (conn as SQLConnection).database === formData.database &&
+          (conn as SQLConnection).username === formData.username
       );
 
       if (isDuplicate) {
         throw new Error("This database connection already exists.");
       }
 
-      // If no duplicate, proceed with saving
-      const dbConnection: DatabaseConnection = {
+      const dbConnection: SQLConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "postgresql",
@@ -114,26 +111,20 @@ export default function PostgresConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast({
-        title: "Success",
-        description:
-          "Database connection successful! Redirecting to databases page...",
-      });
+      toast.success(
+        "PostgreSQL connection successful! Redirecting to databases page..."
+      );
 
-      // Add a small delay before redirecting
       setTimeout(() => {
         router.push("/databases");
       }, 1500);
     } catch (error) {
       console.error("Connection error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to the database. Please check your settings.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to PostgreSQL database. Please check your settings."
+      );
     } finally {
       setTesting(false);
     }
