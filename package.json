@@ -23,16 +23,14 @@
     "@types/react-dom": "^18.2.0",
     "typescript": "^5.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "14.1.0"
-  },
-  "devDependencies": {
+    "eslint-config-next": "14.1.0",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1"
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p && next build"
+    "build": "cd /opt/render/project/src && npm install && npm install tailwindcss@latest postcss@latest autoprefixer@latest && npx tailwindcss init -p && next build"
   },
   "optionalDependencies": {
     "@next/swc-linux-x64-gnu": "14.1.0",
