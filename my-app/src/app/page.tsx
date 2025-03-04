@@ -34,7 +34,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { DatabaseConnection } from "@/types/database";
+import {
+  DatabaseConnection,
+  SQLConnection,
+  MotherDuckConnection,
+  TurboDBConnection,
+  CloudflareConnection,
+} from "@/types/database";
 import { toast } from "react-hot-toast";
 import { TableSuggestions } from "@/components/ui/table-suggestions";
 import { CommandSuggestions } from "@/components/ui/command-suggestions";
@@ -315,13 +321,39 @@ export default function HomePage() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              host: selectedDatabase.host,
-              port: selectedDatabase.port,
-              database: selectedDatabase.database,
-              username: selectedDatabase.username,
-              password: selectedDatabase.password,
-            }),
+            body: JSON.stringify(
+              selectedDatabase.type === "mysql" ||
+                selectedDatabase.type === "postgresql" ||
+                selectedDatabase.type === "clickhouse"
+                ? {
+                    host: (selectedDatabase as SQLConnection).host,
+                    port: (selectedDatabase as SQLConnection).port,
+                    database: (selectedDatabase as SQLConnection).database,
+                    username: (selectedDatabase as SQLConnection).username,
+                    password: (selectedDatabase as SQLConnection).password,
+                  }
+                : selectedDatabase.type === "motherduck"
+                ? {
+                    database: (selectedDatabase as MotherDuckConnection)
+                      .database,
+                    token: (selectedDatabase as MotherDuckConnection).token,
+                  }
+                : selectedDatabase.type === "turbodb"
+                ? {
+                    database: (selectedDatabase as TurboDBConnection).database,
+                    apiKey: (selectedDatabase as TurboDBConnection).apiKey,
+                    organization: (selectedDatabase as TurboDBConnection)
+                      .organization,
+                  }
+                : {
+                    accountId: (selectedDatabase as CloudflareConnection)
+                      .accountId,
+                    apiToken: (selectedDatabase as CloudflareConnection)
+                      .apiToken,
+                    databaseId: (selectedDatabase as CloudflareConnection)
+                      .databaseId,
+                  }
+            ),
           });
 
           if (!response.ok) {
@@ -1006,14 +1038,38 @@ export default function HomePage() {
     setIsLoading(true);
 
     try {
-      const payload = {
-        query: queryContent,
-        database: selectedDatabase.database,
-        host: selectedDatabase.host,
-        port: selectedDatabase.port,
-        username: selectedDatabase.username,
-        password: selectedDatabase.password,
-      };
+      const payload =
+        selectedDatabase.type === "mysql" ||
+        selectedDatabase.type === "postgresql" ||
+        selectedDatabase.type === "clickhouse"
+          ? {
+              query: queryContent,
+              database: (selectedDatabase as SQLConnection).database,
+              host: (selectedDatabase as SQLConnection).host,
+              port: (selectedDatabase as SQLConnection).port,
+              username: (selectedDatabase as SQLConnection).username,
+              password: (selectedDatabase as SQLConnection).password,
+            }
+          : selectedDatabase.type === "motherduck"
+          ? {
+              query: queryContent,
+              database: (selectedDatabase as MotherDuckConnection).database,
+              token: (selectedDatabase as MotherDuckConnection).token,
+            }
+          : selectedDatabase.type === "turbodb"
+          ? {
+              query: queryContent,
+              database: (selectedDatabase as TurboDBConnection).database,
+              apiKey: (selectedDatabase as TurboDBConnection).apiKey,
+              organization: (selectedDatabase as TurboDBConnection)
+                .organization,
+            }
+          : {
+              query: queryContent,
+              accountId: (selectedDatabase as CloudflareConnection).accountId,
+              apiToken: (selectedDatabase as CloudflareConnection).apiToken,
+              databaseId: (selectedDatabase as CloudflareConnection).databaseId,
+            };
 
       const response = await fetch(`${apiUrl}/api/v1/query`, {
         method: "POST",
