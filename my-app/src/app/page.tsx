@@ -140,9 +140,12 @@ export default function HomePage() {
   const commandSuggestionsRef = useRef<HTMLDivElement>(null);
 
   // Add debounced search
-  const debouncedSetShowSuggestions = useCallback((value: boolean) => {
-    setShowSuggestions(value);
-  }, []);
+  const debouncedSetShowSuggestions = useCallback(
+    debounce((value: boolean) => {
+      setShowSuggestions(value);
+    }, 300),
+    []
+  );
 
   // Add new state for assistant width
   const [assistantWidth, setAssistantWidth] = useState(320); // default width 320px

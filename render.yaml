@@ -41,9 +41,11 @@ services:
     env: node
     rootDir: my-app
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
         value: https://text2sql-backend.onrender.com
+      - key: PORT
+        value: 3000
