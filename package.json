@@ -9,7 +9,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
-    "next": "^15.1.7",
+    "next": "14.1.0",
     "react-hot-toast": "^2.5.2",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
@@ -19,11 +19,14 @@
     "critters": "latest",
     "@types/react": "^19.0.10",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "eslint-config-next": "^15.2.1"
+    "typescript": "^5.0.0"
   },
   "scripts": {
-    "dev": "npx next dev",
-    "build": "npx next build"
+    "dev": "next dev",
+    "build": "next build"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.1.0"
   }
 }
