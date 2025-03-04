@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install autoprefixer postcss tailwindcss && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/",
+    "build": "npm install autoprefixer postcss tailwindcss critters eslint-config-next && next build && mkdir -p build && cp -r out/* build/ && cp -r out/_next build/",
     "start": "next start",
     "lint": "next lint"
   },
@@ -29,7 +29,8 @@
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.5.2",
     "sonner": "^2.0.1",
-    "tailwind-merge": "^3.0.2"
+    "tailwind-merge": "^3.0.2",
+    "critters": "^0.0.20"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
