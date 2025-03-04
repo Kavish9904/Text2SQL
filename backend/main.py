@@ -30,9 +30,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "https://frontend.onrender.com",  # Replace with your actual frontend URL
-        "*"  # Temporarily allow all origins for testing
+        "http://localhost:3000",  # For local development
+        "https://text2sql-frontend.onrender.com",  # Your deployed frontend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
