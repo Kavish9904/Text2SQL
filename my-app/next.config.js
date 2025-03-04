@@ -7,6 +7,10 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
+  assetPrefix: "",
+  experimental: {
+    optimizeCss: true,
+  },
 };
 
 module.exports = nextConfig;
