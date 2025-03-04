@@ -8,7 +8,8 @@ const nextConfig = {
   },
   trailingSlash: true,
   distDir: ".next",
-  assetPrefix: ".",
+  assetPrefix: "/",
+  basePath: "",
 };
 
 module.exports = nextConfig;
