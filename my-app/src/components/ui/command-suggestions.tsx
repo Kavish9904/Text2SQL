@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Wand2, Search, Code2, Table2, Wrench, FileCode2 } from "lucide-react";
+import { Wand2, Code2, Table2, Wrench, FileCode2 } from "lucide-react";
 
 interface CommandItem {
   id: string;

@@ -30,7 +30,7 @@ type ChartType = "line" | "bar" | "pie";
 
 interface ChartViewProps {
   type: ChartType;
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   xAxis: string;
   yAxis: string;
 }

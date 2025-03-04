@@ -144,7 +144,7 @@ export default function HomePage() {
     debounce((value: boolean) => {
       setShowSuggestions(value);
     }, 50),
-    []
+    [setShowSuggestions]
   );
 
   // Add new state for assistant width
@@ -363,7 +363,7 @@ export default function HomePage() {
     if (selectedDatabase) {
       fetchTableMetadata();
     }
-  }, [selectedDatabase]);
+  }, [selectedDatabase, fetchTableMetadata]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const content = e.target.value;
@@ -390,7 +390,7 @@ export default function HomePage() {
       return message.slice(0, 30) + "...";
     }
 
-    return message;
+    return cleanMessage;
   };
 
   const generateQueryTitle = (query: string): string => {
@@ -962,6 +962,7 @@ export default function HomePage() {
       handleSendMessage,
       handleSuggestionSelect,
       handleCommandSelect,
+      debouncedSetShowSuggestions,
     ]
   );
 
@@ -1161,8 +1162,8 @@ export default function HomePage() {
   };
 
   // Add new function to check if a value is numeric
-  const isNumeric = (value: any) => {
-    return !isNaN(parseFloat(value)) && isFinite(value);
+  const isNumeric = (value: unknown) => {
+    return !isNaN(parseFloat(value as string)) && isFinite(value as number);
   };
 
   // Add new function to get numeric columns
