@@ -1,7 +1,10 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection } from "@/types/database";
+import type {
+  DatabaseConnection,
+  MotherDuckConnection,
+} from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -65,7 +68,8 @@ export default function MotherDuckConnectPage() {
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.type === "motherduck" && conn.database === formData.database
+          conn.type === "motherduck" &&
+          (conn as MotherDuckConnection).database === formData.database
       );
 
       if (isDuplicate) {

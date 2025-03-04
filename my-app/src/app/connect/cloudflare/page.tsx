@@ -1,7 +1,10 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection } from "@/types/database";
+import type {
+  DatabaseConnection,
+  CloudflareConnection,
+} from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -68,8 +71,8 @@ export default function CloudflareD1ConnectPage() {
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
           conn.type === "cloudflare" &&
-          conn.accountId === formData.accountId &&
-          conn.databaseId === formData.databaseId
+          (conn as CloudflareConnection).accountId === formData.accountId &&
+          (conn as CloudflareConnection).databaseId === formData.databaseId
       );
 
       if (isDuplicate) {

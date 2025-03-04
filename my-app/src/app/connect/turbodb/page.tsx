@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection } from "@/types/database";
+import type { DatabaseConnection, TurboDBConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -68,8 +68,8 @@ export default function TurboDBConnectPage() {
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
           conn.type === "turbodb" &&
-          conn.database === formData.database &&
-          conn.organization === formData.organization
+          (conn as TurboDBConnection).database === formData.database &&
+          (conn as TurboDBConnection).organization === formData.organization
       );
 
       if (isDuplicate) {
