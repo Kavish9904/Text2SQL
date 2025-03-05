@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && next build && mkdir -p build && cp -r out/* build/",
+    "build": "npm ci && next build && mkdir -p build && cp -r out/* build/",
     "start": "next start",
     "lint": "next lint"
   },
