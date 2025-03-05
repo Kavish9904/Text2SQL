@@ -294,7 +294,8 @@ async def chat(request: ChatRequest):
             # Handle commands
             elif word.startswith('/'):
                 commands.append(word[1:])  # Remove / symbol
-        print(references, commands)
+        print("References:", references)
+        print("Commands:", commands)
         # print("-------------------HEHEHEHE-------------")
         print("DATABASE CREDENTIALS:", database_credentials)
         table_info = ""
@@ -312,7 +313,7 @@ async def chat(request: ChatRequest):
                     # ssl_verify_cert=True
                 )
                 cursor = conn.cursor()
-                print("MySQL))))))")
+                # print("MySQL))))))")
                 for reference in references:
                     table_name = reference['table']
                     cursor.execute("""
@@ -329,7 +330,7 @@ async def chat(request: ChatRequest):
                 
                 # cursor.close()
                 # conn.close()
-                print("MySQL))))))")
+                # print("MySQL))))))")
                 # return {"response": table_info}
             
             # PostgreSQL
@@ -452,17 +453,17 @@ async def chat(request: ChatRequest):
         # except Exception as e:
         #     print(f"Connection does not exist: {str(e)}")
     
-        print("TABLE INFO:")
-        print(table_info, type(table_info))
+        # print("TABLE INFO:")
+        # print(table_info, type(table_info))
         # return {"response": table_info}
         
         # except Exception as db_error:
         #     return {"response": f"Error fetching table information: {str(db_error)}"}
         
         # Handle different types of queries
-        print("INSIDE CHAT() FUNCTION")
+        # print("INSIDE CHAT() FUNCTION")
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("OPENAI_APIKEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         natural_language_query = request.message
@@ -518,9 +519,8 @@ async def chat(request: ChatRequest):
         #             count_tokens -= len(messages[0]["content"])
         # except Exception as e:
         #     print(f"Error in count_tokens: {str(e)}")
-        # print("--------------------------------")
-        # print("MESSAGES:")
-        # print(messages)
+        print("--------------------------------")
+        print("MESSAGES:", type(messages))
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
