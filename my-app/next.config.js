@@ -1,10 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
+  reactStrictMode: true,
+  swcMinify: true,
   images: {
     unoptimized: true,
   },
-  // Remove rewrites since they don't work with static exports
+  trailingSlash: true,
+  assetPrefix: "",
+  experimental: {
+    optimizeCss: false,
+  },
 };
 
 module.exports = nextConfig;

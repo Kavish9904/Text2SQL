@@ -1,29 +1,25 @@
 "use client";
 
 import type React from "react";
-import type {
-  DatabaseConnection,
-  SQLConnection,
-} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Check } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { toast } from "../../../components/ui/use-toast";
-import { apiUrl, testApiConnection } from "../../../lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import type { DatabaseConnection } from "@/types/database";
 
 export default function ClickHouseConnectPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     displayName: "",
     hostAddress: "",
-    port: "8123", // Default ClickHouse HTTP port
-    database: "",
-    username: "",
+    port: "8443",
+    username: "root",
     password: "",
+    database: "",
   });
   const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
   const [testing, setTesting] = useState(false);
@@ -48,55 +44,49 @@ export default function ClickHouseConnectPage() {
     setTesting(true);
 
     try {
-      const apiConnected = await testApiConnection();
-      if (!apiConnected) {
-        throw new Error(
-          "Cannot connect to the backend API. Please check if the backend server is running."
-        );
-      }
-
-      const response = await fetch(`${apiUrl}/api/test-connection`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "clickhouse",
-          display_name: formData.displayName,
-          host: formData.hostAddress,
-          port: parseInt(formData.port),
-          database: formData.database,
-          username: formData.username,
-          password: formData.password,
-          ip_whitelist: ipAddresses,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "clickhouse",
+            display_name: formData.displayName,
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.detail ||
-            "Failed to connect to ClickHouse database. Please check your credentials and ensure the database is accessible."
-        );
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
+      // Check for duplicate connections
       const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.type === "clickhouse" &&
-          (conn as SQLConnection).host === formData.hostAddress &&
-          (conn as SQLConnection).database === formData.database &&
-          (conn as SQLConnection).username === formData.username
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
-        throw new Error("This database connection already exists.");
+        throw new Error("Database Connection Already Exists");
       }
 
-      const dbConnection: SQLConnection = {
+      // If no duplicate, proceed with saving
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "clickhouse",
@@ -114,20 +104,11 @@ export default function ClickHouseConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast.success(
-        "ClickHouse connection successful! Redirecting to databases page..."
-      );
-
-      setTimeout(() => {
-        router.push("/databases");
-      }, 1500);
+      toast.success("Database connection successful!");
+      router.push("/databases");
     } catch (error) {
-      console.error("Connection error:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to connect to ClickHouse database. Please check your settings."
-      );
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
     } finally {
       setTesting(false);
     }
@@ -160,7 +141,7 @@ export default function ClickHouseConnectPage() {
               name="displayName"
               value={formData.displayName}
               onChange={handleInputChange}
-              placeholder="My ClickHouse Database"
+              placeholder="ClickHouse Database"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -171,14 +152,14 @@ export default function ClickHouseConnectPage() {
               Host address<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Host URL of the ClickHouse database
+              Host URL/IP (without https://) of the ClickHouse database
             </div>
             <Input
               id="hostAddress"
               name="hostAddress"
               value={formData.hostAddress}
               onChange={handleInputChange}
-              placeholder="my-clickhouse-server.com"
+              placeholder="clickhouse-aws-cloud.com"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -189,32 +170,13 @@ export default function ClickHouseConnectPage() {
               Port<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Port at which the ClickHouse HTTP interface is running (default:
-              8123)
+              Port at which the Clickhouse database is running
             </div>
             <Input
               id="port"
               name="port"
               value={formData.port}
               onChange={handleInputChange}
-              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="database">
-              Database<span className="text-red-500 ml-0.5">*</span>
-            </Label>
-            <div className="text-sm text-gray-500 mb-1">
-              Name of the database to connect to
-            </div>
-            <Input
-              id="database"
-              name="database"
-              value={formData.database}
-              onChange={handleInputChange}
-              placeholder="default"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -232,7 +194,6 @@ export default function ClickHouseConnectPage() {
               name="username"
               value={formData.username}
               onChange={handleInputChange}
-              placeholder="default"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -250,6 +211,23 @@ export default function ClickHouseConnectPage() {
               name="password"
               type="password"
               value={formData.password}
+              onChange={handleInputChange}
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="database">
+              Database<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Name of the database to connect to
+            </div>
+            <Input
+              id="database"
+              name="database"
+              value={formData.database}
               onChange={handleInputChange}
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
@@ -291,7 +269,7 @@ export default function ClickHouseConnectPage() {
             className="w-full bg-black text-white hover:bg-gray-900"
             disabled={testing}
           >
-            {testing ? "Testing Connection..." : "Test and Save Connection"}
+            {testing ? "Testing..." : "Test and Save Connection"}
           </Button>
         </form>
       </div>

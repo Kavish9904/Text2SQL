@@ -5,8 +5,12 @@ import {
   CommandGroup,
   CommandInput,
   CommandList,
-} from "./command";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Wand2, Code2, Table2, Wrench, FileCode2 } from "lucide-react";
 
 interface CommandItem {

@@ -1,0 +1,43 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.6",
+    "@radix-ui/react-dropdown-menu": "^2.1.6",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-slot": "^1.1.2",
+    "@radix-ui/react-switch": "^1.0.3",
+    "@radix-ui/react-tabs": "^1.1.3",
+    "@types/node": "^20.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.0.4",
+    "critters": "^0.0.25",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.1.0",
+    "lucide-react": "^0.477.0",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
+    "sonner": "^2.0.1",
+    "tailwind-merge": "^3.0.2",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.9"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm install && npm install -D autoprefixer postcss tailwindcss && next build && mkdir -p build && cp -r .next/* build/"
+  },
+  "optionalDependencies": {
+    "@next/swc-linux-x64-gnu": "14.1.0",
+    "@next/swc-linux-x64-musl": "14.1.0"
+  }
+}

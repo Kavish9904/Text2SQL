@@ -1,12 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "My App",
-  description: "A modern web application",
+  title: "T2SQL - Text to SQL Assistant",
+  description: "AI-powered SQL query assistant",
 };
 
 export default function RootLayout({
@@ -16,7 +27,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+      >
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

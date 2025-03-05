@@ -1,33 +1,43 @@
 "use client";
 
 import type React from "react";
-import type {
-  DatabaseConnection,
-  TurboDBConnection,
-} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { toast } from "../../../components/ui/use-toast";
-import { apiUrl, testApiConnection } from "../../../lib/api";
+import { ArrowLeft, Copy, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
+import type { DatabaseConnection } from "@/types/database";
 
-export default function TurboDBConnectPage() {
+export default function TursoConnectPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    displayName: "",
-    apiKey: "", // TurboDB API key
+    display_name: "",
+    host: "",
+    port: "5432",
     database: "",
-    organization: "", // TurboDB organization ID
+    username: "",
+    password: "",
+    ip_whitelist: [] as string[],
   });
+  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
   const [testing, setTesting] = useState(false);
+
+  const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const copyToClipboard = async (ip: string) => {
+    await navigator.clipboard.writeText(ip);
+    setCopiedIPs((prev) => ({ ...prev, [ip]: true }));
+    setTimeout(() => {
+      setCopiedIPs((prev) => ({ ...prev, [ip]: false }));
+    }, 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,57 +45,57 @@ export default function TurboDBConnectPage() {
     setTesting(true);
 
     try {
-      const apiConnected = await testApiConnection();
-      if (!apiConnected) {
-        throw new Error(
-          "Cannot connect to the backend API. Please check if the backend server is running."
-        );
-      }
-
-      const response = await fetch(`${apiUrl}/api/test-connection`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "turbodb",
-          display_name: formData.displayName,
-          api_key: formData.apiKey,
-          database: formData.database,
-          organization: formData.organization,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "turbodb",
+            display_name: formData.display_name,
+            host: formData.host,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.detail ||
-            "Failed to connect to TurboDB. Please check your API key and ensure the database exists."
-        );
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
+      // Check for duplicate connections
       const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.type === "turbodb" &&
-          (conn as TurboDBConnection).database === formData.database &&
-          (conn as TurboDBConnection).organization === formData.organization
+          conn.host === formData.host &&
+          conn.database === formData.database &&
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
-        throw new Error("This database connection already exists.");
+        throw new Error("Database Connection Already Exists");
       }
 
-      const dbConnection: TurboDBConnection = {
+      // If no duplicate, proceed with saving
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
-        name: formData.displayName,
+        name: formData.display_name,
         type: "turbodb",
+        host: formData.host,
+        port: parseInt(formData.port),
         database: formData.database,
-        apiKey: formData.apiKey,
-        organization: formData.organization,
+        username: formData.username,
+        password: formData.password,
         lastUsed: new Date().toISOString(),
       };
 
@@ -95,20 +105,11 @@ export default function TurboDBConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast.success(
-        "TurboDB connection successful! Redirecting to databases page..."
-      );
-
-      setTimeout(() => {
-        router.push("/databases");
-      }, 1500);
+      toast.success("Database connection successful!");
+      router.push("/databases");
     } catch (error) {
-      console.error("Connection error:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to connect to TurboDB. Please check your settings."
-      );
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
     } finally {
       setTesting(false);
     }
@@ -126,59 +127,60 @@ export default function TurboDBConnectPage() {
           Back to Integrations
         </Button>
 
-        <h1 className="text-2xl font-bold mb-8">Connect TurboDB Database</h1>
+        <h1 className="text-2xl font-bold mb-8">
+          Connect TursoDB&apos;s SQLite Database
+        </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="displayName">
+            <Label htmlFor="display_name">
               Display Name<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
               Name of the database to be displayed in T2SQL
             </div>
             <Input
-              id="displayName"
-              name="displayName"
-              value={formData.displayName}
+              id="display_name"
+              name="display_name"
+              value={formData.display_name}
               onChange={handleInputChange}
-              placeholder="My TurboDB Database"
+              placeholder="My TursoDB Database"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="apiKey">
-              API Key<span className="text-red-500 ml-0.5">*</span>
+            <Label htmlFor="host">
+              Host URL<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Your TurboDB API key
+              Host LibSQL URL of the SQLite database
             </div>
             <Input
-              id="apiKey"
-              name="apiKey"
-              type="password"
-              value={formData.apiKey}
+              id="host"
+              name="host"
+              value={formData.host}
               onChange={handleInputChange}
-              placeholder="turbo_xxxxxxxxxxxxxxxxxxxx"
+              placeholder="libsql://sequel-database.turso.io"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="organization">
-              Organization ID<span className="text-red-500 ml-0.5">*</span>
+            <Label htmlFor="port">
+              Port<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Your TurboDB organization identifier
+              Port of the database
             </div>
             <Input
-              id="organization"
-              name="organization"
-              value={formData.organization}
+              id="port"
+              name="port"
+              value={formData.port}
               onChange={handleInputChange}
-              placeholder="org_xxxxxxxxxxxxxxxxxxxx"
+              placeholder="5432"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -189,17 +191,82 @@ export default function TurboDBConnectPage() {
               Database<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Name of the database to connect to
+              Name of the database
             </div>
             <Input
               id="database"
               name="database"
               value={formData.database}
               onChange={handleInputChange}
-              placeholder="my_database"
+              placeholder="sequel-database"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">
+              Username<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Username to connect to the database
+            </div>
+            <Input
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Password<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Password to connect to the database
+            </div>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>IP Whitelist</Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Please whitelist the following IPs if your database has a firewall
+            </div>
+            <div className="space-y-2">
+              {ipAddresses.map((ip) => (
+                <div
+                  key={ip}
+                  className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md"
+                >
+                  <code className="text-gray-900">{ip}</code>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyToClipboard(ip)}
+                    className="h-8 w-8 text-gray-500 hover:text-gray-900"
+                  >
+                    {copiedIPs[ip] ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <Button

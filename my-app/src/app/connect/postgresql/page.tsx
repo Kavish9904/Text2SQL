@@ -1,19 +1,15 @@
 "use client";
 
 import type React from "react";
-import type {
-  DatabaseConnection,
-  SQLConnection,
-} from "../../../types/database";
+import type { DatabaseConnection } from "@/types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Check } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { toast } from "../../../components/ui/use-toast";
-import { apiUrl, testApiConnection } from "../../../lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
 
 export default function PostgresConnectPage() {
   const router = useRouter();
@@ -48,55 +44,49 @@ export default function PostgresConnectPage() {
     setTesting(true);
 
     try {
-      const apiConnected = await testApiConnection();
-      if (!apiConnected) {
-        throw new Error(
-          "Cannot connect to the backend API. Please check if the backend server is running."
-        );
-      }
-
-      const response = await fetch(`${apiUrl}/api/test-connection`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "postgresql",
-          display_name: formData.displayName,
-          host: formData.hostAddress,
-          port: parseInt(formData.port),
-          database: formData.database,
-          username: formData.username,
-          password: formData.password,
-          ip_whitelist: ipAddresses,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/test-connection",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "postgresql",
+            display_name: formData.displayName,
+            host: formData.hostAddress,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
+            ip_whitelist: ipAddresses,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.detail ||
-            "Failed to connect to PostgreSQL database. Please check your credentials and ensure the database is accessible."
-        );
+        throw new Error(errorData.detail || "Failed to connect to database");
       }
 
+      // Check for duplicate connections
       const existingConnections: DatabaseConnection[] = JSON.parse(
         localStorage.getItem("databaseConnections") || "[]"
       );
 
       const isDuplicate = existingConnections.some(
         (conn: DatabaseConnection) =>
-          conn.type === "postgresql" &&
-          (conn as SQLConnection).host === formData.hostAddress &&
-          (conn as SQLConnection).database === formData.database &&
-          (conn as SQLConnection).username === formData.username
+          conn.host === formData.hostAddress &&
+          conn.database === formData.database &&
+          conn.username === formData.username
       );
 
       if (isDuplicate) {
-        throw new Error("This database connection already exists.");
+        throw new Error("Database Connection Already Exists");
       }
 
-      const dbConnection: SQLConnection = {
+      // If no duplicate, proceed with saving
+      const dbConnection: DatabaseConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "postgresql",
@@ -114,20 +104,11 @@ export default function PostgresConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast.success(
-        "PostgreSQL connection successful! Redirecting to databases page..."
-      );
-
-      setTimeout(() => {
-        router.push("/databases");
-      }, 1500);
+      toast("Database connection successful!");
+      router.push("/databases");
     } catch (error) {
-      console.error("Connection error:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to connect to PostgreSQL database. Please check your settings."
-      );
+      console.error("Error:", error);
+      toast.error(error instanceof Error ? error.message : "Connection failed");
     } finally {
       setTesting(false);
     }
