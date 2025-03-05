@@ -1,10 +1,19 @@
 "use client";
 
+import type React from "react";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -34,13 +43,13 @@ export default function SignupPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-[350px] rounded-lg border bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-center text-black">
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center text-black">
             Sign up for T2SQL
-          </h1>
-        </div>
-        <div className="p-6 pt-0">
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <form onSubmit={handleSignup}>
             <div className="space-y-4">
               <Input
@@ -76,16 +85,16 @@ export default function SignupPage() {
               Sign up
             </Button>
           </form>
-        </div>
-        <div className="flex justify-center p-6 pt-0">
+        </CardContent>
+        <CardFooter className="flex justify-center">
           <p className="text-sm text-black">
             Already have an account?{" "}
             <Link href="/login" className="text-blue-600 hover:underline">
               Log in
             </Link>
           </p>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

@@ -1,94 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import type React from "react";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    // Check if user is already logged in
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    if (isAuthenticated === "true") {
+      router.push("/");
+    }
+  }, [router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    const user = users.find(
+      (u: { email: string; password: string }) =>
+        u.email === email && u.password === password
+    );
 
-    try {
-      // Simulate login - replace with actual login logic
-      if (formData.email && formData.password) {
-        // Store login state
-        localStorage.setItem("isLoggedIn", "true");
-        toast.success("Login successful!");
-        router.push("/dashboard");
-      } else {
-        throw new Error("Please fill in all fields");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Login failed");
+    if (user) {
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("currentUser", JSON.stringify(user));
+      router.push("/");
+    } else {
+      setError("Invalid email or password. New user? Please sign up.");
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-[350px] p-6 bg-white rounded-lg shadow-md">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold text-black">Login to T2SQL</h1>
-          <p className="text-gray-500">Enter your credentials to continue</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center text-black">
+            Login to T2SQL
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin}>
+            <div className="space-y-4">
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="text-black placeholder:text-gray-500"
+              />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="text-black placeholder:text-gray-500"
+              />
+            </div>
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+            <Button
+              type="submit"
+              className="w-full mt-4 bg-black text-white hover:bg-gray-800"
             >
-              Email
-            </label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full bg-black text-white hover:bg-gray-900"
-          >
-            Login
-          </Button>
-        </form>
-      </div>
+              Log in
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-black">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-blue-600 hover:underline">
+              Sign up
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
