@@ -219,14 +219,15 @@ export default function HomePage() {
         localStorage.getItem("currentUser") || "{}"
       );
       if (currentUser && currentUser.name) {
-        setWorkspaceTitle(`${currentUser.name}'s Workspace`);
-        setEditValue(workspaceTitle);
+        const newTitle = `${currentUser.name}'s Workspace`;
+        setWorkspaceTitle(newTitle);
+        setEditValue(newTitle);
       }
     };
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, [workspaceTitle]);
+  }, []);
 
   useEffect(() => {
     const checkAuth = () => {
