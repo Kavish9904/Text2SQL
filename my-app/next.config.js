@@ -4,14 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://text2sql-backend.onrender.com/api/:path*",
-      },
-    ];
-  },
+  distDir: "build",
 };
 
 module.exports = nextConfig;
