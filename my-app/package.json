@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && npm install -D typescript @types/node @types/react @types/react-dom && next build && mkdir -p build && cp -r out/* build/",
+    "build": "npm install && next build && mkdir -p build && cp -r out/* build/",
     "start": "next start",
     "lint": "next lint"
   },
