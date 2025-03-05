@@ -60,6 +60,10 @@ export default function PostgresConnectPage() {
             username: formData.username,
             password: formData.password,
             ip_whitelist: ipAddresses,
+            ssl: {
+              rejectUnauthorized: true,
+              require: true,
+            },
           }),
         }
       );
@@ -96,6 +100,10 @@ export default function PostgresConnectPage() {
         username: formData.username,
         password: formData.password,
         lastUsed: new Date().toISOString(),
+        ssl: {
+          rejectUnauthorized: true,
+          require: true,
+        },
       };
 
       existingConnections.push(dbConnection);
