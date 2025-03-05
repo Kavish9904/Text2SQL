@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && mkdir -p build && cp -r .next/standalone/. build/ && cp -r .next/static build/.next/static && cp -r public build/public && cp server.js build/ && cp package.json build/",
     "start": "node server.js",
     "lint": "next lint"
   },
