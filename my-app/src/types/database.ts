@@ -8,4 +8,8 @@ export type DatabaseConnection = {
   username: string;
   password: string;
   lastUsed: string;
+  ssl?: {
+    rejectUnauthorized: boolean;
+    require: boolean;
+  };
 };
