@@ -56,7 +56,7 @@ export default function ConnectPage() {
       <div className="max-w-5xl mx-auto p-8">
         <Button
           variant="ghost"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/")}
           className="flex items-center text-black hover:bg-transparent hover:text-gray-600 px-0 mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
