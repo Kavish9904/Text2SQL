@@ -9,7 +9,7 @@ import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 
 export default function PostgresConnectPage() {
   const router = useRouter();
@@ -104,7 +104,7 @@ export default function PostgresConnectPage() {
         JSON.stringify(existingConnections)
       );
 
-      toast("Database connection successful!");
+      toast.success("Database connection successful!");
       router.push("/databases");
     } catch (error) {
       console.error("Error:", error);
