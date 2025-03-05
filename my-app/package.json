@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mkdir -p build && cp -r .next/standalone/. build/ && cp -r .next/static build/.next/static && cp -r public build/public && cp server.js build/ && cp package.json build/",
+    "build": "next build && mkdir -p build && cp -r .next/standalone/. build/ && cp -r .next/static build/.next/static && cp -r public build/public && cp -r src build/src && cp server.js build/ && cp package.json build/ && cp next.config.js build/ && cp middleware.ts build/",
     "start": "node server.js",
     "lint": "next lint"
   },
