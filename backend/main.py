@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 # from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 # from sqlalchemy import create_engine, Column, Integer, String
@@ -131,7 +132,7 @@ async def test_connection(connection: DatabaseConnection):
                 port=connection.port,
                 ssl='require' if '.postgres.database.azure.com' in connection.host else None
             )
-            conn.close()
+            await conn.close()
             return {"success": True, "message": "Connection successful!"}
         
         else:
@@ -462,94 +463,68 @@ async def chat(request: ChatRequest):
         # Handle different types of queries
         print("INSIDE CHAT() FUNCTION")
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("OPENAI_APIKEY")
+        print(f"API Key loaded: {'Yes' if api_key else 'No'}")
         if not api_key:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         natural_language_query = request.message
         chat_history = request.history
-        # print("CHAT HISTORY:")
-        client = OpenAI(api_key=api_key)
-        # print("HHH")
-        if database_credentials:
-            DB_NAME = database_credentials.get('type')
-        else:
-            DB_NAME = "PostgreSQL" # default database
-        # host: str
-        # port: int
-        # database: str
-        # username: str
-        # password: str
-
-        # metadata_description = get_metadata(DatabaseMetadataRequest(host="smartquery2.postgres.database.azure.com", 
-        #                                                             port=5432, database="postgres", 
-        #                                                             username="smartquery2", 
-        #                                                             password="Password@123"))
-        # print("OUTSIDE")
-        if table_info != "":
-            metadata_description = table_info
-        else:
-            metadata_description = "No metadata available"
-        prompt2 = f"""You are a helpful {DB_NAME} database agent that takes queries in natural language and converts it into a {DB_NAME} query. The database metadata is as follows- {metadata_description}.
-            You must interact with the user as a database ai agent and convert the relevant user queries to {DB_NAME} query."""
-        # print(metadata_description)
-        task2 = f"User: {natural_language_query}"
-        print(prompt2+task2)
-        # prompt = f"You are a helpful assistant that converts natural language queries into {DB_NAME} queries. You must only return the {DB_NAME} query, nothing else. Here is the database schema:\n{metadata_description}"
-        # task = f"Convert the following natural language query into a valid {DB_NAME} query:\n{natural_language_query}\nEnsure the query is compatible with {DB_NAME} syntax."
-        # print(prompt+task)
-        print("--------------INSIDE------------------")
-        messages = [
-            {"role": "system", "content": prompt2}
-        ]
-        chat_history.append({"role": "user", "content": task2})
-        if chat_history:
-            messages.extend(chat_history)
-        # print("HHHHHHHHHHHHHHHHH")
-        # max 128,000 tokens context window i.e. max 128,000 * 4 = 512,000 characters.
-        # if chat_history has more than 512,000 characters, then truncate it
-        # try:
-        #     count_tokens = 0
-        #     for message in messages:
-        #         count_tokens += len(message["content"])
-        #     if count_tokens > 512000:
-        #         # delete the oldest message if it is not the system message
-        #         if messages[0]["role"] != "system":
-        #             messages.pop(0)
-        #             count_tokens -= len(messages[0]["content"])
-        # except Exception as e:
-        #     print(f"Error in count_tokens: {str(e)}")
-        # print("--------------------------------")
-        # print("MESSAGES:")
-        # print(messages)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0
-        )
-        # query = response.choices[0].message.content.strip().replace("```sql", "").replace("```", "")
-        # # delete '\n' from the start of the query
-        # query = query.lstrip('\n').rstrip('\n')
-        openai_response = response.choices[0].message.content.strip()
-        print("ASSISTANT RESPONSE:")
-        print(openai_response)
-        chat_history.append({"role": "assistant", "content": openai_response})
-        # print("--------------------------------")
         
-        # first line is the is_related_to_database
-        # is_related_to_database = openai_response.split("\n")[0].strip().split(" ")[2].lower() == "true"
-        # formatted_response = "\n".join(openai_response.split("\n")[1:])
-        # print(formatted_response, type(formatted_response))
-        # print(is_related_to_database)
+        try:
+            print("Initializing OpenAI client...")
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.openai.com/v1"  # Explicitly set the base URL
+            )
+            print("OpenAI client initialized successfully")
+            
+            if database_credentials:
+                DB_NAME = database_credentials.get('type')
+            else:
+                DB_NAME = "PostgreSQL" # default database
 
-        # # instead of returning chat_history, append it into a json file
-        # with open("chat_history.json", "w") as f:
-        #     json.dump(chat_history, f)
-        if openai_response != "":
-            return {"response": openai_response}
-        else:
-            return {"response": "Please rephrase your query to make it more specific and relevant to the database!"}
-        # return {"response": "Hello"}
-      
+            if table_info != "":
+                metadata_description = table_info
+            else:
+                metadata_description = "No metadata available"
+            prompt2 = f"""You are a helpful {DB_NAME} database agent that takes queries in natural language and converts it into a {DB_NAME} query. The database metadata is as follows- {metadata_description}.
+                You must interact with the user as a database ai agent and convert the relevant user queries to {DB_NAME} query."""
+            task2 = f"User: {natural_language_query}"
+            print("Prepared prompt and task")
+            print("--------------INSIDE------------------")
+            messages = [
+                {"role": "system", "content": prompt2}
+            ]
+            chat_history.append({"role": "user", "content": task2})
+            if chat_history:
+                messages.extend(chat_history)
+
+            print("Making OpenAI API call...")
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",  # Using gpt-3.5-turbo
+                    messages=messages,
+                    temperature=0
+                )
+                print("OpenAI API call successful")
+                openai_response = response.choices[0].message.content.strip()
+                print("ASSISTANT RESPONSE:")
+                print(openai_response)
+                chat_history.append({"role": "assistant", "content": openai_response})
+                
+                if openai_response != "":
+                    return {"response": openai_response}
+                else:
+                    return {"response": "Please rephrase your query to make it more specific and relevant to the database!"}
+                    
+            except Exception as api_error:
+                print(f"OpenAI API error details: {str(api_error)}")
+                raise HTTPException(status_code=500, detail=f"Error with OpenAI API: {str(api_error)}")
+                
+        except Exception as client_error:
+            print(f"Error initializing OpenAI client: {str(client_error)}")
+            raise HTTPException(status_code=500, detail=f"Error initializing OpenAI client: {str(client_error)}")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
