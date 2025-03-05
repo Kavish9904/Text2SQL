@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && npx tailwindcss init -p && next build",
+    "build": "npm install && npx tailwindcss init -p && next build && mkdir -p .next/standalone && cp -r .next/* .next/standalone/",
     "start": "next start",
     "lint": "next lint"
   },
@@ -25,7 +25,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cmdk": "^0.2.1",
-    "critters": "^0.0.20",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
     "lucide-react": "^0.323.0",
     "next": "14.1.0",
     "postcss": "^8.4.24",
@@ -40,8 +41,6 @@
     "typescript": "^5"
   },
   "devDependencies": {
-    "@shadcn/ui": "^0.0.4",
-    "eslint": "^8",
-    "eslint-config-next": "14.1.0"
+    "@shadcn/ui": "^0.0.4"
   }
 }
