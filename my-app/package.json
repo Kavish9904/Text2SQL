@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && npx tailwindcss init -p && next build && mkdir -p .next/standalone && cp -r .next/* .next/standalone/",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
