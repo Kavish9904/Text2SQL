@@ -1,0 +1,23 @@
+{
+  "id": "c6a2d416-9dbb-4b36-a683-eb3acf4a98ad",
+  "messages": [
+    {
+      "role": "user",
+      "content": "@users.* list all users"
+    },
+    {
+      "role": "assistant",
+      "content": "```sql\nSELECT * FROM users;\n```"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.item_name list all items"
+    },
+    {
+      "role": "assistant",
+      "content": "```sql\nSELECT item_name FROM inventory;\n```"
+    }
+  ],
+  "createdAt": "2025-03-05T20:46:12.771Z",
+  "title": "@users.* list all users"
+}
