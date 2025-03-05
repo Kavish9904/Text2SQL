@@ -51,7 +51,7 @@ export default function MySQLConnectPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/test-connection",
+        "https://text2sql-backend.onrender.com/api/test-connection",
         {
           method: "POST",
           headers: {
