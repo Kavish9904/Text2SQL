@@ -186,32 +186,26 @@ export default function HomePage() {
   }, [handleMouseMove, handleMouseUp]);
 
   useEffect(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    setIsAuthenticated(auth);
+    const checkAuth = () => {
+      const isAuth = localStorage.getItem("isAuthenticated") === "true";
+      if (!isAuth) {
+        router.push("/login");
+      } else {
+        setIsAuthenticated(true);
+        const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+        setCurrentUser(user);
 
-    if (auth) {
-      const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
-      );
-      if (currentUser && currentUser.name) {
-        const savedWorkspaceTitle = localStorage.getItem("workspaceTitle");
-        if (savedWorkspaceTitle) {
-          setWorkspaceTitle(savedWorkspaceTitle);
-          setEditValue(savedWorkspaceTitle);
-        } else {
-          const defaultTitle = `${currentUser.name}'s Workspace`;
+        // Set workspace title based on user's name
+        if (user && user.name) {
+          const defaultTitle = `${user.name}'s Workspace`;
           setWorkspaceTitle(defaultTitle);
           setEditValue(defaultTitle);
           localStorage.setItem("workspaceTitle", defaultTitle);
         }
-      } else {
-        const defaultTitle = "User's Workspace";
-        setWorkspaceTitle(defaultTitle);
-        setEditValue(defaultTitle);
-        localStorage.setItem("workspaceTitle", defaultTitle);
       }
-    }
-  }, [isAuthenticated]);
+    };
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -228,20 +222,6 @@ export default function HomePage() {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const isAuth = localStorage.getItem("isAuthenticated") === "true";
-      if (!isAuth) {
-        router.push("/login");
-      } else {
-        setIsAuthenticated(true);
-        const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
-        setCurrentUser(user);
-      }
-    };
-    checkAuth();
-  }, [router]);
 
   useEffect(() => {
     const savedConnections = localStorage.getItem("databaseConnections");
