@@ -66,6 +66,10 @@ export default function MySQLConnectPage() {
             username: formData.username,
             password: formData.password,
             ip_whitelist: ipAddresses,
+            ssl: {
+              rejectUnauthorized: true,
+              require: formData.ssl,
+            },
           }),
         }
       );

@@ -95,38 +95,45 @@ class DatabaseMetadataRequest(BaseModel):
 @app.post("/api/test-connection")
 async def test_connection(connection: DatabaseConnection):
     try:
-        # Format username correctly for Azure
-        server_name = connection.host.split('.')[0]  # Gets 'smartquery2' from the host
-        full_username = f"{connection.username}"  # Don't append server name here
+        if '.mysql.database.azure.com' in connection.host:
+            # Format username correctly for Azure
+            server_name = connection.host.split('.')[0]  # Gets 'smartquery2' from the host
+            full_username = f"{connection.username}"  # Don't append server name here
+            
+            config = {
+                'host': connection.host,
+                'user': full_username,
+                'password': connection.password,
+                'database': connection.database,
+                'port': connection.port,
+                'ssl_ca': '/etc/ssl/certs/ca-certificates.crt',
+                'ssl_verify_cert': True
+            }
+            
+            print("\n=== Connection Config ===")
+            print({**config, 'password': '****'})
+            print("=======================\n")
+            
+            conn = mysql.connector.connect(**config)
+            conn.close()
+            return {"success": True, "message": "Connection successful!"}
         
-        conn_str = (
-            f"host={connection.host} "
-            f"port={connection.port} "
-            f"dbname={connection.database} "
-            f"user={full_username} "
-            f"password={connection.password} "
-            "sslmode=require"
-        )
-        # connection = psycopg2.connect(
-        #     host=connection.host,
-        #     user=connection.username,
-        #     password=connection.password,
-        #     database=connection.database,
-        #     port=connection.port,
-        #     sslmode="require"
-        # )
+        elif '.postgres.database.azure.com' in connection.host or connection.port == 5432:
+            # PostgreSQL
+            conn = await asyncpg.connect(
+                user=connection.username,
+                password=connection.password,
+                database=connection.database,
+                host=connection.host,
+                port=connection.port,
+                ssl='require' if '.postgres.database.azure.com' in connection.host else None
+            )
+            conn.close()
+            return {"success": True, "message": "Connection successful!"}
         
-        print("\n=== Connection String ===")
-        print(conn_str.replace(connection.password, "****"))
-        print("=======================\n")
-        
-        conn = psycopg2.connect(conn_str)
-        # conn.close()
-        global global_connstr, global_conn
-        global_connstr = conn_str
-        global_conn = conn
-        return {"success": True, "message": "Connection successful!"}
-    
+        else:
+            raise Exception("Unsupported database type. Currently supporting PostgreSQL and MySQL.")
+
     except Exception as e:
         print(f"Connection error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -167,7 +174,8 @@ async def handle_query(query_request: QueryRequest):
                     'password': query_request.password,
                     'database': query_request.database,
                     'port': query_request.port,
-                    'ssl_disabled': True  # Disable SSL for now to test connection
+                    'ssl_ca': '/etc/ssl/certs/ca-certificates.crt',  # Standard CA bundle location
+                    'ssl_verify_cert': True
                 }
                 
                 print("Connecting to MySQL with config:", {**config, 'password': '****'})  # Debug log

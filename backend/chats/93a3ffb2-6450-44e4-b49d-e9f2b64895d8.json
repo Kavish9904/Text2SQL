@@ -1,6 +1,19 @@
 {
   "id": "93a3ffb2-6450-44e4-b49d-e9f2b64895d8",
-  "messages": [],
+  "messages": [
+    {
+      "role": "user",
+      "content": "hi"
+    },
+    {
+      "role": "user",
+      "content": "bye"
+    },
+    {
+      "role": "assistant",
+      "content": "Goodbye! Feel free to come back if you need more help."
+    }
+  ],
   "createdAt": "2025-03-04T05:35:26.260Z",
-  "title": "New Chat"
+  "title": "hi"
 }
