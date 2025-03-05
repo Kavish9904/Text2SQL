@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # import jwt
 # from datetime import datetime, timedelta
 
+from openai import OpenAI
 from pydantic import BaseModel
 from typing import Optional, Literal, List
 import mysql.connector
@@ -176,8 +177,8 @@ async def handle_query(query_request: QueryRequest):
                     'password': query_request.password,
                     'database': query_request.database,
                     'port': query_request.port,
-                    'ssl_ca': '/etc/ssl/certs/ca-certificates.crt',  # Standard CA bundle location
-                    'ssl_verify_cert': True
+                    # 'ssl_ca': '/etc/ssl/certs/ca-certificates.crt',  # Standard CA bundle location
+                    # 'ssl_verify_cert': True
                 }
                 
                 print("Connecting to MySQL with config:", {**config, 'password': '****'})  # Debug log
@@ -263,68 +264,106 @@ async def chat(request: ChatRequest):
         database_credentials = request.database_credentials
         
         # If message contains @ and we have database credentials, fetch table information
-        if '@' in message and database_credentials:
-            try:
-                table_name = message[message.index('@') + 1:].split()[0]
-                
-                # MySQL
-                if database_credentials.get('type') == 'mysql' or '.mysql.database.azure.com' in database_credentials.get('host', ''):
-                    conn = mysql.connector.connect(
-                        host=database_credentials['host'],
-                        user=database_credentials['username'],
-                        password=database_credentials['password'],
-                        database=database_credentials['database'],
-                        port=database_credentials['port'],
-                        ssl_ca='/etc/ssl/certs/ca-certificates.crt',
-                        ssl_verify_cert=True
-                    )
-                    cursor = conn.cursor()
-                    
+        # if '@' in message and database_credentials:
+ 
+        # Extract table references and commands
+        references = []
+        commands = []
+        
+        # Split message into words
+        words = message.split()
+        
+        for word in words:
+            # Handle table/column references
+            if word.startswith('@'):
+                ref = word[1:]  # Remove @ symbol
+                if '.' in ref:
+                    # Handle @table.* or @table.column format
+                    table, col = ref.split('.')
+                    references.append({
+                        'table': table,
+                        'column': '*' if col == '*' else col
+                    })
+                else:
+                    # Handle @table format
+                    references.append({
+                        'table': ref,
+                        'column': '*'
+                    })
+            
+            # Handle commands
+            elif word.startswith('/'):
+                commands.append(word[1:])  # Remove / symbol
+        print(references, commands)
+        # print("-------------------HEHEHEHE-------------")
+        print("DATABASE CREDENTIALS:", database_credentials)
+        table_info = ""
+        if database_credentials:
+            # MySQL
+            if database_credentials.get('type') == 'mysql' or '.mysql.database.azure.com' in database_credentials.get('host', ''):
+                print("MYSQL")
+                conn = mysql.connector.connect(
+                    host=database_credentials['host'],
+                    user=database_credentials['username'],
+                    password=database_credentials['password'],
+                    database=database_credentials['database'],
+                    port=database_credentials['port'],
+                    # ssl_ca='/etc/ssl/certs/ca-certificates.crt',
+                    # ssl_verify_cert=True
+                )
+                cursor = conn.cursor()
+                print("MySQL))))))")
+                for reference in references:
+                    table_name = reference['table']
                     cursor.execute("""
                         SELECT COLUMN_NAME, DATA_TYPE
                         FROM INFORMATION_SCHEMA.COLUMNS
                         WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
                     """, (database_credentials['database'], table_name))
-                    
+                
                     columns = cursor.fetchall()
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for col_name, data_type in columns:
                         table_info += f"- {col_name} ({data_type})\n"
-                    
-                    cursor.close()
-                    conn.close()
-                    
-                    return {"response": table_info}
+                    table_info += "\n\n"
                 
-                # PostgreSQL
-                elif database_credentials.get('type') == 'postgresql' or '.postgres.database.azure.com' in database_credentials.get('host', ''):
-                    conn = await asyncpg.connect(
-                        user=database_credentials['username'],
-                        password=database_credentials['password'],
-                        database=database_credentials['database'],
-                        host=database_credentials['host'],
-                        port=database_credentials['port'],
-                        ssl='require' if '.postgres.database.azure.com' in database_credentials['host'] else None
-                    )
-                    
-                    columns = await conn.fetch("""
-                        SELECT column_name, data_type
-                        FROM information_schema.columns
-                        WHERE table_schema = 'public' AND table_name = $1
-                    """, table_name)
-                    
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                # cursor.close()
+                # conn.close()
+                print("MySQL))))))")
+                # return {"response": table_info}
+            
+            # PostgreSQL
+            elif database_credentials.get('type') == 'postgresql' or '.postgres.database.azure.com' in database_credentials.get('host', ''):
+                print("POSTGRESQL")
+                conn = await asyncpg.connect(
+                    user=database_credentials['username'],
+                    password=database_credentials['password'],
+                    database=database_credentials['database'],
+                    host=database_credentials['host'],
+                    port=database_credentials['port'],
+                    ssl='require' if '.postgres.database.azure.com' in database_credentials['host'] else None
+                )
+                for reference in references:
+                    table_name = reference['table']
+                    columns = await conn.fetch("""SELECT column_name, data_type
+                                FROM information_schema.columns
+                                WHERE table_schema = 'public' AND table_name = $1""", table_name)
+                
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for record in columns:
                         table_info += f"- {record['column_name']} ({record['data_type']})\n"
-                    
-                    await conn.close()
-                    return {"response": table_info}
+                    table_info += "\n\n"
+                
+                # await conn.close()
+                # return {"response": table_info}
 
-                # MotherDuck
-                elif database_credentials.get('type') == 'motherduck':
-                    conn_str = f"md:{database_credentials['database']}?token={database_credentials['password']}"
-                    conn = duckdb.connect(conn_str)
-                    
+            # MotherDuck
+            elif database_credentials.get('type') == 'motherduck':
+                print("MOTHERDUCK")
+                conn_str = f"md:{database_credentials['database']}?token={database_credentials['password']}"
+                conn = duckdb.connect(conn_str)
+                for reference in references:
+                    table_name = reference['table']
                     # Get schema information using DuckDB's information_schema
                     result = conn.execute(f"""
                         SELECT column_name, data_type
@@ -332,44 +371,50 @@ async def chat(request: ChatRequest):
                         WHERE table_name = '{table_name}'
                     """).fetchall()
                     
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for col_name, data_type in result:
                         table_info += f"- {col_name} ({data_type})\n"
-                    
-                    conn.close()
-                    return {"response": table_info}
+                    table_info += "\n\n"
+                
+                # conn.close()
+                # return {"response": table_info}
 
-                # ClickHouse
-                elif database_credentials.get('type') == 'clickhouse':
-                    client = clickhouse_driver.Client(
-                        host=database_credentials['host'],
-                        port=database_credentials['port'],
-                        user=database_credentials['username'],
-                        password=database_credentials['password'],
-                        database=database_credentials['database'],
-                        secure=True
-                    )
-                    
+            # ClickHouse
+            elif database_credentials.get('type') == 'clickhouse':
+                print("CLICKHOUSE")
+                client = clickhouse_driver.Client(
+                    host=database_credentials['host'],
+                    port=database_credentials['port'],
+                    user=database_credentials['username'],
+                    password=database_credentials['password'],
+                    database=database_credentials['database'],
+                    secure=True
+                )
+                for reference in references:
+                    table_name = reference['table']
                     result = client.execute(f"""
                         SELECT name, type
                         FROM system.columns
                         WHERE table = '{table_name}' AND database = '{database_credentials['database']}'
                     """)
-                    
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for col_name, data_type in result:
                         table_info += f"- {col_name} ({data_type})\n"
-                    
-                    return {"response": table_info}
+                    table_info += "\n\n"
+                
+                # return {"response": table_info}
 
-                # Cloudflare D1
-                elif database_credentials.get('type') == 'cloudflare':
-                    headers = {
-                        'Authorization': f'Bearer {database_credentials["password"]}',
-                        'Content-Type': 'application/json'
-                    }
-                    url = f"https://api.cloudflare.com/client/v4/accounts/{database_credentials['username']}/d1/database/{database_credentials['database']}/query"
-                    
+            # Cloudflare D1
+            elif database_credentials.get('type') == 'cloudflare':
+                print("CLOUDFLARE")
+                headers = {
+                    'Authorization': f'Bearer {database_credentials["password"]}',
+                    'Content-Type': 'application/json'
+                }
+                url = f"https://api.cloudflare.com/client/v4/accounts/{database_credentials['username']}/d1/database/{database_credentials['database']}/query"
+                for reference in references:
+                    table_name = reference['table']
                     # Query SQLite schema table for column information
                     query = f"SELECT name, type FROM pragma_table_info('{table_name}')"
                     response = requests.post(url, headers=headers, json={"sql": query})
@@ -378,56 +423,136 @@ async def chat(request: ChatRequest):
                         raise Exception(f"Cloudflare D1 error: {response.text}")
                     
                     result = response.json()['result']
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for column in result:
                         table_info += f"- {column['name']} ({column['type']})\n"
-                    
-                    return {"response": table_info}
+                
+                # return {"response": table_info}
 
-                # TurboDB (SQLite)
-                elif database_credentials.get('type') == 'turbodb':
-                    conn = sqlite3.connect(database_credentials['database'])
-                    cursor = conn.cursor()
-                    
+            # TurboDB (SQLite)
+            elif database_credentials.get('type') == 'turbodb':
+                print("TURBODB")
+                conn = sqlite3.connect(database_credentials['database'])
+                cursor = conn.cursor()
+                for reference in references:
+                    table_name = reference['table']
                     cursor.execute(f"SELECT name, type FROM pragma_table_info('{table_name}')")
                     columns = cursor.fetchall()
                     
-                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    table_info += f"Table '{table_name}' has the following columns:\n"
                     for col_name, data_type in columns:
                         table_info += f"- {col_name} ({data_type})\n"
-                    
-                    cursor.close()
-                    conn.close()
-                    return {"response": table_info}
+                    table_info += "\n\n"
             
-            except Exception as db_error:
-                return {"response": f"Error fetching table information: {str(db_error)}"}
+        
+        # print("-------------------YHYHYHYHYHYH-------------")
+        # try:
+        #     cursor.close()
+        #     conn.close()
+        # except Exception as e:
+        #     print(f"Connection does not exist: {str(e)}")
+    
+        print("TABLE INFO:")
+        print(table_info, type(table_info))
+        # return {"response": table_info}
+        
+        # except Exception as db_error:
+        #     return {"response": f"Error fetching table information: {str(db_error)}"}
         
         # Handle different types of queries
-        if any(word in message for word in ["hi", "hello", "hey"]):
-            return {"response": "Hello! I'm your SQL assistant. How can I help you with your database queries today?"}
-            
-        elif "help" in message or "what can you do" in message:
-            return {"response": """I can help you with:
-1. Writing SQL queries
-2. Explaining database concepts
-3. Optimizing your queries
-4. Understanding your database structure
-
-What would you like to know more about?"""}
-            
-        elif any(word in message for word in ["thanks", "thank you"]):
-            return {"response": "You're welcome! Let me know if you need anything else."}
-            
-        elif "bye" in message or "goodbye" in message:
-            return {"response": "Goodbye! Feel free to come back if you need more help."}
-            
+        print("INSIDE CHAT() FUNCTION")
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+        natural_language_query = request.message
+        chat_history = request.history
+        # print("CHAT HISTORY:")
+        client = OpenAI(api_key=api_key)
+        # print("HHH")
+        if database_credentials:
+            DB_NAME = database_credentials.get('type')
         else:
-            # Default response for other queries
-            return {"response": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"}
-            
+            DB_NAME = "PostgreSQL" # default database
+        # host: str
+        # port: int
+        # database: str
+        # username: str
+        # password: str
+
+        # metadata_description = get_metadata(DatabaseMetadataRequest(host="smartquery2.postgres.database.azure.com", 
+        #                                                             port=5432, database="postgres", 
+        #                                                             username="smartquery2", 
+        #                                                             password="Password@123"))
+        # print("OUTSIDE")
+        if table_info != "":
+            metadata_description = table_info
+        else:
+            metadata_description = "No metadata available"
+        prompt2 = f"""You are a helpful {DB_NAME} database agent that takes queries in natural language and converts it into a {DB_NAME} query. The database metadata is as follows- {metadata_description}.
+            You must interact with the user as a database ai agent and convert the relevant user queries to {DB_NAME} query."""
+        # print(metadata_description)
+        task2 = f"User: {natural_language_query}"
+        print(prompt2+task2)
+        # prompt = f"You are a helpful assistant that converts natural language queries into {DB_NAME} queries. You must only return the {DB_NAME} query, nothing else. Here is the database schema:\n{metadata_description}"
+        # task = f"Convert the following natural language query into a valid {DB_NAME} query:\n{natural_language_query}\nEnsure the query is compatible with {DB_NAME} syntax."
+        # print(prompt+task)
+        print("--------------INSIDE------------------")
+        messages = [
+            {"role": "system", "content": prompt2}
+        ]
+        chat_history.append({"role": "user", "content": task2})
+        if chat_history:
+            messages.extend(chat_history)
+        # print("HHHHHHHHHHHHHHHHH")
+        # max 128,000 tokens context window i.e. max 128,000 * 4 = 512,000 characters.
+        # if chat_history has more than 512,000 characters, then truncate it
+        # try:
+        #     count_tokens = 0
+        #     for message in messages:
+        #         count_tokens += len(message["content"])
+        #     if count_tokens > 512000:
+        #         # delete the oldest message if it is not the system message
+        #         if messages[0]["role"] != "system":
+        #             messages.pop(0)
+        #             count_tokens -= len(messages[0]["content"])
+        # except Exception as e:
+        #     print(f"Error in count_tokens: {str(e)}")
+        # print("--------------------------------")
+        # print("MESSAGES:")
+        # print(messages)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0
+        )
+        # query = response.choices[0].message.content.strip().replace("```sql", "").replace("```", "")
+        # # delete '\n' from the start of the query
+        # query = query.lstrip('\n').rstrip('\n')
+        openai_response = response.choices[0].message.content.strip()
+        print("ASSISTANT RESPONSE:")
+        print(openai_response)
+        chat_history.append({"role": "assistant", "content": openai_response})
+        # print("--------------------------------")
+        
+        # first line is the is_related_to_database
+        # is_related_to_database = openai_response.split("\n")[0].strip().split(" ")[2].lower() == "true"
+        # formatted_response = "\n".join(openai_response.split("\n")[1:])
+        # print(formatted_response, type(formatted_response))
+        # print(is_related_to_database)
+
+        # # instead of returning chat_history, append it into a json file
+        # with open("chat_history.json", "w") as f:
+        #     json.dump(chat_history, f)
+        if openai_response != "":
+            return {"response": openai_response}
+        else:
+            return {"response": "Please rephrase your query to make it more specific and relevant to the database!"}
+        # return {"response": "Hello"}
+      
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 def generate_chat_title(messages):
     if not messages:
@@ -449,6 +574,7 @@ def generate_chat_title(messages):
     if len(title) > 30:
         title = title[:27] + "..."
     return title
+
 
 @app.get("/api/v1/chats")
 async def get_chat_history():
@@ -537,6 +663,7 @@ async def get_chat_history():
         print(f"Error in get_chat_history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/chats")
 async def save_chat(chat: ChatSession):
     try:
@@ -563,6 +690,7 @@ async def save_chat(chat: ChatSession):
         print(f"Error in save_chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/v1/chats/{chat_id}")
 async def get_chat(chat_id: str):
     try:
@@ -586,6 +714,7 @@ async def get_chat(chat_id: str):
         print(f"Error in get_chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/api/v1/chats/{chat_id}")
 async def delete_chat(chat_id: str):
     try:
@@ -607,6 +736,7 @@ async def delete_chat(chat_id: str):
     except Exception as e:
         print(f"Error in delete_chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/v1/metadata")
 async def get_metadata(request: DatabaseMetadataRequest):
