@@ -1,22 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
-  distDir: ".next",
+  output: "export",
   images: {
     unoptimized: true,
   },
-  basePath: "",
-  experimental: {
-    serverActions: true,
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://text2sql-backend.onrender.com/api/:path*",
-      },
-    ];
-  },
+  // Remove rewrites since they don't work with static exports
 };
 
 module.exports = nextConfig;
