@@ -1,19 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  distDir: ".next",
   images: {
     unoptimized: true,
   },
-  trailingSlash: false,
+  basePath: "",
+  experimental: {
+    serverActions: true,
+  },
   async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: "/api/:path*",
-          destination: "https://text2sql-backend.onrender.com/api/:path*",
-        },
-      ],
-    };
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://text2sql-backend.onrender.com/api/:path*",
+      },
+    ];
   },
 };
 
