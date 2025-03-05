@@ -23,6 +23,7 @@ import os
 from datetime import datetime
 import psycopg2
 import asyncpg
+import sqlite3
 
 app = FastAPI()
 
@@ -84,6 +85,7 @@ class ChatSession(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[Message]
+    database_credentials: Optional[dict] = None  # Add this field for database credentials
 
 class DatabaseMetadataRequest(BaseModel):
     host: str
@@ -258,6 +260,148 @@ async def handle_query(query_request: QueryRequest):
 async def chat(request: ChatRequest):
     try:
         message = request.message.lower()
+        database_credentials = request.database_credentials
+        
+        # If message contains @ and we have database credentials, fetch table information
+        if '@' in message and database_credentials:
+            try:
+                table_name = message[message.index('@') + 1:].split()[0]
+                
+                # MySQL
+                if database_credentials.get('type') == 'mysql' or '.mysql.database.azure.com' in database_credentials.get('host', ''):
+                    conn = mysql.connector.connect(
+                        host=database_credentials['host'],
+                        user=database_credentials['username'],
+                        password=database_credentials['password'],
+                        database=database_credentials['database'],
+                        port=database_credentials['port'],
+                        ssl_ca='/etc/ssl/certs/ca-certificates.crt',
+                        ssl_verify_cert=True
+                    )
+                    cursor = conn.cursor()
+                    
+                    cursor.execute("""
+                        SELECT COLUMN_NAME, DATA_TYPE
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+                    """, (database_credentials['database'], table_name))
+                    
+                    columns = cursor.fetchall()
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for col_name, data_type in columns:
+                        table_info += f"- {col_name} ({data_type})\n"
+                    
+                    cursor.close()
+                    conn.close()
+                    
+                    return {"response": table_info}
+                
+                # PostgreSQL
+                elif database_credentials.get('type') == 'postgresql' or '.postgres.database.azure.com' in database_credentials.get('host', ''):
+                    conn = await asyncpg.connect(
+                        user=database_credentials['username'],
+                        password=database_credentials['password'],
+                        database=database_credentials['database'],
+                        host=database_credentials['host'],
+                        port=database_credentials['port'],
+                        ssl='require' if '.postgres.database.azure.com' in database_credentials['host'] else None
+                    )
+                    
+                    columns = await conn.fetch("""
+                        SELECT column_name, data_type
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = $1
+                    """, table_name)
+                    
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for record in columns:
+                        table_info += f"- {record['column_name']} ({record['data_type']})\n"
+                    
+                    await conn.close()
+                    return {"response": table_info}
+
+                # MotherDuck
+                elif database_credentials.get('type') == 'motherduck':
+                    conn_str = f"md:{database_credentials['database']}?token={database_credentials['password']}"
+                    conn = duckdb.connect(conn_str)
+                    
+                    # Get schema information using DuckDB's information_schema
+                    result = conn.execute(f"""
+                        SELECT column_name, data_type
+                        FROM information_schema.columns
+                        WHERE table_name = '{table_name}'
+                    """).fetchall()
+                    
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for col_name, data_type in result:
+                        table_info += f"- {col_name} ({data_type})\n"
+                    
+                    conn.close()
+                    return {"response": table_info}
+
+                # ClickHouse
+                elif database_credentials.get('type') == 'clickhouse':
+                    client = clickhouse_driver.Client(
+                        host=database_credentials['host'],
+                        port=database_credentials['port'],
+                        user=database_credentials['username'],
+                        password=database_credentials['password'],
+                        database=database_credentials['database'],
+                        secure=True
+                    )
+                    
+                    result = client.execute(f"""
+                        SELECT name, type
+                        FROM system.columns
+                        WHERE table = '{table_name}' AND database = '{database_credentials['database']}'
+                    """)
+                    
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for col_name, data_type in result:
+                        table_info += f"- {col_name} ({data_type})\n"
+                    
+                    return {"response": table_info}
+
+                # Cloudflare D1
+                elif database_credentials.get('type') == 'cloudflare':
+                    headers = {
+                        'Authorization': f'Bearer {database_credentials["password"]}',
+                        'Content-Type': 'application/json'
+                    }
+                    url = f"https://api.cloudflare.com/client/v4/accounts/{database_credentials['username']}/d1/database/{database_credentials['database']}/query"
+                    
+                    # Query SQLite schema table for column information
+                    query = f"SELECT name, type FROM pragma_table_info('{table_name}')"
+                    response = requests.post(url, headers=headers, json={"sql": query})
+                    
+                    if response.status_code != 200:
+                        raise Exception(f"Cloudflare D1 error: {response.text}")
+                    
+                    result = response.json()['result']
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for column in result:
+                        table_info += f"- {column['name']} ({column['type']})\n"
+                    
+                    return {"response": table_info}
+
+                # TurboDB (SQLite)
+                elif database_credentials.get('type') == 'turbodb':
+                    conn = sqlite3.connect(database_credentials['database'])
+                    cursor = conn.cursor()
+                    
+                    cursor.execute(f"SELECT name, type FROM pragma_table_info('{table_name}')")
+                    columns = cursor.fetchall()
+                    
+                    table_info = f"Table '{table_name}' has the following columns:\n"
+                    for col_name, data_type in columns:
+                        table_info += f"- {col_name} ({data_type})\n"
+                    
+                    cursor.close()
+                    conn.close()
+                    return {"response": table_info}
+            
+            except Exception as db_error:
+                return {"response": f"Error fetching table information: {str(db_error)}"}
         
         # Handle different types of queries
         if any(word in message for word in ["hi", "hello", "hey"]):

@@ -16,6 +16,14 @@
     {
       "role": "assistant",
       "content": "I understand you're asking about databases. Could you please be more specific about what you'd like to know?"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* vlaue"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.*' has the following columns:\n"
     }
   ],
   "createdAt": "2025-03-03T19:03:52.190Z",

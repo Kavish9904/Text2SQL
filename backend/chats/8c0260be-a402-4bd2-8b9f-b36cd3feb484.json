@@ -1,0 +1,71 @@
+{
+  "id": "8c0260be-a402-4bd2-8b9f-b36cd3feb484",
+  "messages": [
+    {
+      "role": "user",
+      "content": "@inventory.* value ?"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.*' has the following columns:\n"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.supplier list all suppliers"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.supplier' has the following columns:\n"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.item_name list all items"
+    },
+    {
+      "role": "assistant",
+      "content": "No columns found for table 'inventory.item_name'. Please check if the table exists."
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* total value?"
+    },
+    {
+      "role": "assistant",
+      "content": "Error fetching table information: column reference \"column_name\" is ambiguous"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* total value?"
+    },
+    {
+      "role": "assistant",
+      "content": "Error fetching table information: column reference \"column_name\" is ambiguous"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.item_name list all items"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.item_name' does not exist in the database."
+    },
+    {
+      "role": "user",
+      "content": "@inventory.quantity what istotal quantity"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory' has the following columns:\n- item_id (integer) [PRIMARY KEY] [NOT NULL]\n- item_name (character varying) [NOT NULL]\n- description (text)\n- quantity (integer) [NOT NULL]\n- unit_price (numeric) [NOT NULL]\n- supplier (character varying)\n- created_at (timestamp without time zone)\n"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* total value ?"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.*' has the following columns:\n"
+    }
+  ],
+  "createdAt": "2025-03-05T15:19:08.294Z",
+  "title": "@inventory.* value ?"
+}

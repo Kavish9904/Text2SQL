@@ -1,0 +1,23 @@
+{
+  "id": "a02190f6-1cda-479e-b0ca-e41e94e8e558",
+  "messages": [
+    {
+      "role": "user",
+      "content": "@inventory.quantity tell me"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.quantity' has the following columns:\n"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.unit_price total"
+    },
+    {
+      "role": "assistant",
+      "content": "Table 'inventory.unit_price' has the following columns:\n"
+    }
+  ],
+  "createdAt": "2025-03-05T14:44:15.962Z",
+  "title": "@inventory.quantity tell me"
+}

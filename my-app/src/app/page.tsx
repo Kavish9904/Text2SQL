@@ -540,13 +540,6 @@ export default function HomePage() {
           body: JSON.stringify(updatedChat),
         });
 
-        // Extract table references from the message
-        const tableRefs =
-          inputMessage.match(/@(\w+)(?:\.(\w+))?/g)?.map((ref) => {
-            const [table, column] = ref.slice(1).split(".");
-            return { table, column };
-          }) || [];
-
         // Get assistant response with metadata
         const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
           method: "POST",
@@ -559,16 +552,17 @@ export default function HomePage() {
               role: msg.role,
               content: msg.content,
             })),
-            metadata: {
-              tables: tableRefs.map((ref) => ({
-                name: ref.table,
-                columns: ref.column
-                  ? [ref.column]
-                  : tableMetadata
-                      .find((t) => t.name === ref.table)
-                      ?.columns.map((c) => c.name) || [],
-              })),
-            },
+            database_credentials:
+              inputMessage.includes("@") && selectedDatabase
+                ? {
+                    host: selectedDatabase.host,
+                    port: selectedDatabase.port,
+                    database: selectedDatabase.database,
+                    username: selectedDatabase.username,
+                    password: selectedDatabase.password,
+                    type: selectedDatabase.type,
+                  }
+                : null,
           }),
         });
 
@@ -626,10 +620,10 @@ export default function HomePage() {
       inputMessage,
       chatSessions,
       currentChatId,
-      tableMetadata,
       setMessages,
       setInputMessage,
       setChatSessions,
+      selectedDatabase,
     ]
   );
 
