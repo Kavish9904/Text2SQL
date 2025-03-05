@@ -37,6 +37,8 @@ export default function SignupPage() {
       localStorage.setItem("users", JSON.stringify(users));
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("currentUser", JSON.stringify(newUser));
+      const workspaceTitle = `${name}'s Workspace`;
+      localStorage.setItem("workspaceTitle", workspaceTitle);
       router.push("/");
     }
   };

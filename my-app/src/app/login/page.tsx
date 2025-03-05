@@ -40,6 +40,9 @@ export default function LoginPage() {
     if (user) {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("currentUser", JSON.stringify(user));
+      // Set workspace title for the logged-in user
+      const workspaceTitle = `${user.name}'s Workspace`;
+      localStorage.setItem("workspaceTitle", workspaceTitle);
       router.push("/");
     } else {
       setError("Invalid email or password. New user? Please sign up.");

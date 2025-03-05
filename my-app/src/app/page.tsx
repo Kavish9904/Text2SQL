@@ -39,6 +39,7 @@ import { toast } from "react-hot-toast";
 import { TableSuggestions } from "@/components/ui/table-suggestions";
 import { CommandSuggestions } from "@/components/ui/command-suggestions";
 import { ChartView } from "@/components/ui/chart-view";
+import { API_BASE_URL } from "@/config/env";
 
 type Message = {
   role: "user" | "assistant";
@@ -238,9 +239,7 @@ export default function HomePage() {
     // Load chat history when component mounts
     const loadChatHistory = async () => {
       try {
-        const response = await fetch(
-          "https://text2sql-backend.onrender.com/api/v1/chats"
-        );
+        const response = await fetch(`${API_BASE_URL}/api/v1/chats`);
         if (!response.ok) {
           throw new Error("Failed to load chat history");
         }
@@ -306,22 +305,19 @@ export default function HomePage() {
 
     try {
       console.log("Fetching metadata for database:", selectedDatabase.name);
-      const response = await fetch(
-        "https://text2sql-backend.onrender.com/api/v1/metadata",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            host: selectedDatabase.host,
-            port: selectedDatabase.port,
-            database: selectedDatabase.database,
-            username: selectedDatabase.username,
-            password: selectedDatabase.password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/metadata`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          host: selectedDatabase.host,
+          port: selectedDatabase.port,
+          database: selectedDatabase.database,
+          username: selectedDatabase.username,
+          password: selectedDatabase.password,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -456,16 +452,13 @@ export default function HomePage() {
       };
 
       // Save new chat to backend
-      const response = await fetch(
-        "https://text2sql-backend.onrender.com/api/v1/chats",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newChat),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/chats`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newChat),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create new chat");
@@ -539,7 +532,7 @@ export default function HomePage() {
         );
 
         // Save updated chat to backend
-        await fetch("https://text2sql-backend.onrender.com/api/v1/chats", {
+        await fetch(`${API_BASE_URL}/api/v1/chats`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -555,32 +548,29 @@ export default function HomePage() {
           }) || [];
 
         // Get assistant response with metadata
-        const response = await fetch(
-          "https://text2sql-backend.onrender.com/api/v1/chat",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              message: inputMessage,
-              history: updatedMessages.map((msg) => ({
-                role: msg.role,
-                content: msg.content,
+        const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: inputMessage,
+            history: updatedMessages.map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
+            metadata: {
+              tables: tableRefs.map((ref) => ({
+                name: ref.table,
+                columns: ref.column
+                  ? [ref.column]
+                  : tableMetadata
+                      .find((t) => t.name === ref.table)
+                      ?.columns.map((c) => c.name) || [],
               })),
-              metadata: {
-                tables: tableRefs.map((ref) => ({
-                  name: ref.table,
-                  columns: ref.column
-                    ? [ref.column]
-                    : tableMetadata
-                        .find((t) => t.name === ref.table)
-                        ?.columns.map((c) => c.name) || [],
-                })),
-              },
-            }),
-          }
-        );
+            },
+          }),
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -606,7 +596,7 @@ export default function HomePage() {
         };
 
         // Save final updated chat to backend
-        await fetch("https://text2sql-backend.onrender.com/api/v1/chats", {
+        await fetch(`${API_BASE_URL}/api/v1/chats`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -975,7 +965,7 @@ export default function HomePage() {
     try {
       // Delete chat from backend
       const response = await fetch(
-        `https://text2sql-backend.onrender.com/api/v1/chats/${sessionId}`,
+        `${API_BASE_URL}/api/v1/chats/${sessionId}`,
         {
           method: "DELETE",
         }
@@ -1026,16 +1016,13 @@ export default function HomePage() {
         password: selectedDatabase.password,
       };
 
-      const response = await fetch(
-        "https://text2sql-backend.onrender.com/api/v1/query",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1110,9 +1097,7 @@ export default function HomePage() {
   const switchChat = async (sessionId: string) => {
     try {
       // Load chat from backend
-      const response = await fetch(
-        `https://text2sql-backend.onrender.com/api/v1/chats/${sessionId}`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/chats/${sessionId}`);
       if (!response.ok) {
         throw new Error("Failed to load chat");
       }
@@ -1140,9 +1125,7 @@ export default function HomePage() {
 
   const refreshChatHistory = async () => {
     try {
-      const response = await fetch(
-        "https://text2sql-backend.onrender.com/api/v1/chats"
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/chats`);
       if (!response.ok) {
         throw new Error("Failed to load chat history");
       }
