@@ -1,16 +1,19 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection, TurboDBConnection } from "@/types/database";
+import type {
+  DatabaseConnection,
+  TurboDBConnection,
+} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { apiUrl, testApiConnection } from "@/lib/api";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { toast } from "../../../components/ui/use-toast";
+import { apiUrl, testApiConnection } from "../../../lib/api";
 
 export default function TurboDBConnectPage() {
   const router = useRouter();
@@ -76,7 +79,7 @@ export default function TurboDBConnectPage() {
         throw new Error("This database connection already exists.");
       }
 
-      const dbConnection: DatabaseConnection = {
+      const dbConnection: TurboDBConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "turbodb",

@@ -1,16 +1,19 @@
 "use client";
 
 import type React from "react";
-import type { DatabaseConnection, SQLConnection } from "@/types/database";
+import type {
+  DatabaseConnection,
+  SQLConnection,
+} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { apiUrl, testApiConnection } from "@/lib/api";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { toast } from "../../../components/ui/use-toast";
+import { apiUrl, testApiConnection } from "../../../lib/api";
 
 export default function ClickHouseConnectPage() {
   const router = useRouter();

@@ -1,19 +1,19 @@
 "use client";
 
 import type React from "react";
-import type {
+import {
   DatabaseConnection,
   MotherDuckConnection,
-} from "@/types/database";
+} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { apiUrl, testApiConnection } from "@/lib/api";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { toast } from "../../../components/ui/use-toast";
+import { apiUrl, testApiConnection } from "../../../lib/api";
 
 export default function MotherDuckConnectPage() {
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function MotherDuckConnectPage() {
     displayName: "",
     token: "", // MotherDuck service token
     database: "",
+    organization: "",
   });
   const [testing, setTesting] = useState(false);
 
@@ -51,6 +52,7 @@ export default function MotherDuckConnectPage() {
           display_name: formData.displayName,
           token: formData.token,
           database: formData.database,
+          organization: formData.organization,
         }),
       });
 
@@ -76,12 +78,13 @@ export default function MotherDuckConnectPage() {
         throw new Error("This database connection already exists.");
       }
 
-      const dbConnection: DatabaseConnection = {
+      const dbConnection: MotherDuckConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "motherduck",
         database: formData.database,
         token: formData.token,
+        organization: formData.organization,
         lastUsed: new Date().toISOString(),
       };
 
@@ -175,6 +178,24 @@ export default function MotherDuckConnectPage() {
               value={formData.database}
               onChange={handleInputChange}
               placeholder="my_database"
+              className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="organization">
+              Organization<span className="text-red-500 ml-0.5">*</span>
+            </Label>
+            <div className="text-sm text-gray-500 mb-1">
+              Your MotherDuck organization
+            </div>
+            <Input
+              id="organization"
+              name="organization"
+              value={formData.organization}
+              onChange={handleInputChange}
+              placeholder="my_organization"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />

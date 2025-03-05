@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -80,6 +79,23 @@ export default function PricingPage() {
     cta: "Get Team",
     footnote: "For 3+ users, billed annually",
   };
+
+  const renderCheckIcon = () => (
+    <span className="h-5 w-5 text-green-500 shrink-0 mr-3">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </span>
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -166,7 +182,7 @@ export default function PricingPage() {
                   <ul className="space-y-3">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex text-sm">
-                        <Check className="h-5 w-5 text-green-500 shrink-0 mr-3" />
+                        {renderCheckIcon()}
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}
@@ -199,7 +215,7 @@ export default function PricingPage() {
                   <ul className="space-y-4">
                     {businessPlan.features.map((feature, index) => (
                       <li key={index} className="flex text-sm">
-                        <Check className="h-5 w-5 text-green-500 shrink-0 mr-3" />
+                        {renderCheckIcon()}
                         <span className="text-gray-600">{feature}</span>
                       </li>
                     ))}

@@ -1,95 +1,71 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-interface Integration {
-  id: string;
-  name: string;
-  icon: string;
-}
+import { ArrowLeft } from "lucide-react";
+import { Button } from "../../components/ui/button";
 
 export default function ConnectPage() {
   const router = useRouter();
-  // const selectedIntegration = null;
-
-  const integrations: Integration[] = [
-    {
-      id: "postgresql",
-      name: "PostgreSQL",
-      icon: "🐘",
-    },
-    {
-      id: "turbodb",
-      name: "TursoDB",
-      icon: "🐂",
-    },
-    {
-      id: "cloudflare",
-      name: "Cloudflare D1",
-      icon: "☁️",
-    },
-    {
-      id: "mysql",
-      name: "MySQL",
-      icon: "🐬",
-    },
-    {
-      id: "clickhouse",
-      name: "ClickHouse",
-      icon: "📊",
-    },
-    {
-      id: "motherduck",
-      name: "MotherDuck",
-      icon: "🦆",
-    },
-  ];
-
-  const handleIntegrationClick = (integrationId: string) => {
-    // setSelectedIntegration(integrationId);
-    router.push(`/connect/${integrationId}`);
-  };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-5xl mx-auto p-8">
+    <div className="min-h-screen bg-white text-black">
+      <div className="max-w-2xl mx-auto px-4 py-16">
         <Button
           variant="ghost"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/dashboard")}
           className="flex items-center text-black hover:bg-transparent hover:text-gray-600 px-0 mb-8"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
           Back to Dashboard
         </Button>
 
-        <h1 className="text-4xl font-bold text-black mb-2">
-          Add New Integration
-        </h1>
-        <p className="text-gray-600 text-lg mb-8">
-          Start querying your data with T2SQL. Select a data source to begin.
-        </p>
+        <h1 className="text-2xl font-bold mb-8">Connect a Database</h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {integrations.map((integration) => (
-            <Card
-              key={integration.id}
-              className="group relative hover:border-gray-300 cursor-pointer p-4"
-              onClick={() => handleIntegrationClick(integration.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{integration.icon}</span>
-                  <h3 className="text-lg font-medium text-black">
-                    {integration.name}
-                  </h3>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/clickhouse")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">ClickHouse</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a ClickHouse database for high-performance analytics
+            </p>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/mysql")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">MySQL</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a MySQL database for relational data storage
+            </p>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/cloudflare")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">Cloudflare D1</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a Cloudflare D1 database for serverless SQL
+            </p>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/motherduck")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">MotherDuck</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a MotherDuck database for serverless analytics
+            </p>
+          </Button>
         </div>
       </div>
     </div>

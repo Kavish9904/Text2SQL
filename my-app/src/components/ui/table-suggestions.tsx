@@ -5,12 +5,8 @@ import {
   CommandGroup,
   CommandInput,
   CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+} from "./command";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Database, Table } from "lucide-react";
 
 interface TableMetadata {

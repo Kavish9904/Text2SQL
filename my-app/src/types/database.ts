@@ -1,4 +1,4 @@
-export type BaseConnection = {
+export interface BaseConnection {
   id: string;
   name: string;
   type:
@@ -9,36 +9,37 @@ export type BaseConnection = {
     | "turbodb"
     | "cloudflare";
   lastUsed: string;
-};
+}
 
-export type SQLConnection = BaseConnection & {
-  type: "mysql" | "postgresql" | "clickhouse";
+export interface SQLConnection extends BaseConnection {
+  type: "clickhouse" | "mysql" | "postgresql";
   host: string;
   port: number;
   database: string;
   username: string;
   password: string;
-};
+}
 
-export type MotherDuckConnection = BaseConnection & {
+export interface CloudflareConnection extends BaseConnection {
+  type: "cloudflare";
+  accountId: string;
+  apiToken: string;
+  databaseName: string;
+}
+
+export interface MotherDuckConnection extends BaseConnection {
   type: "motherduck";
-  database: string;
   token: string;
-};
+  database: string;
+  organization: string;
+}
 
-export type TurboDBConnection = BaseConnection & {
+export interface TurboDBConnection extends BaseConnection {
   type: "turbodb";
   database: string;
   apiKey: string;
   organization: string;
-};
-
-export type CloudflareConnection = BaseConnection & {
-  type: "cloudflare";
-  accountId: string;
-  apiToken: string;
-  databaseId: string;
-};
+}
 
 export type DatabaseConnection =
   | SQLConnection

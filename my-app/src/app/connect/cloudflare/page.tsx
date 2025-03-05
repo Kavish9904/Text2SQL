@@ -1,19 +1,19 @@
 "use client";
 
 import type React from "react";
-import type {
+import {
   DatabaseConnection,
   CloudflareConnection,
-} from "@/types/database";
+} from "../../../types/database";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { apiUrl, testApiConnection } from "@/lib/api";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { toast } from "../../../components/ui/use-toast";
+import { apiUrl, testApiConnection } from "../../../lib/api";
 
 export default function CloudflareD1ConnectPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function CloudflareD1ConnectPage() {
     displayName: "",
     accountId: "", // Cloudflare account ID
     apiToken: "", // Cloudflare API token
-    databaseId: "", // D1 database ID
+    databaseName: "", // D1 database ID
   });
   const [testing, setTesting] = useState(false);
 
@@ -52,7 +52,7 @@ export default function CloudflareD1ConnectPage() {
           display_name: formData.displayName,
           account_id: formData.accountId,
           api_token: formData.apiToken,
-          database_id: formData.databaseId,
+          database_name: formData.databaseName,
         }),
       });
 
@@ -72,20 +72,20 @@ export default function CloudflareD1ConnectPage() {
         (conn: DatabaseConnection) =>
           conn.type === "cloudflare" &&
           (conn as CloudflareConnection).accountId === formData.accountId &&
-          (conn as CloudflareConnection).databaseId === formData.databaseId
+          (conn as CloudflareConnection).databaseName === formData.databaseName
       );
 
       if (isDuplicate) {
         throw new Error("This database connection already exists.");
       }
 
-      const dbConnection: DatabaseConnection = {
+      const dbConnection: CloudflareConnection = {
         id: Date.now().toString(),
         name: formData.displayName,
         type: "cloudflare",
         accountId: formData.accountId,
         apiToken: formData.apiToken,
-        databaseId: formData.databaseId,
+        databaseName: formData.databaseName,
         lastUsed: new Date().toISOString(),
       };
 
@@ -187,16 +187,16 @@ export default function CloudflareD1ConnectPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="databaseId">
+            <Label htmlFor="databaseName">
               Database ID<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
               Your D1 database identifier
             </div>
             <Input
-              id="databaseId"
-              name="databaseId"
-              value={formData.databaseId}
+              id="databaseName"
+              name="databaseName"
+              value={formData.databaseName}
               onChange={handleInputChange}
               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
