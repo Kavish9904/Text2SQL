@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 import {
   X,
   Pencil,
