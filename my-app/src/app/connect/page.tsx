@@ -66,6 +66,29 @@ export default function ConnectPage() {
               Connect to a MotherDuck database for serverless analytics
             </p>
           </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/postgresql")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">PostgreSQL</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a PostgreSQL database for powerful relational data
+              storage
+            </p>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => router.push("/connect/mysql")}
+            className="w-full h-auto p-4 flex flex-col items-start gap-2 hover:bg-gray-50"
+          >
+            <h2 className="text-lg font-semibold">MySQL</h2>
+            <p className="text-sm text-gray-500 text-left">
+              Connect to a MySQL database for relational data storage
+            </p>
+          </Button>
         </div>
       </div>
     </div>
