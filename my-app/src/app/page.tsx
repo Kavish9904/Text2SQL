@@ -143,7 +143,7 @@ export default function HomePage() {
   const debouncedSetShowSuggestions = useCallback(
     debounce((value: boolean) => {
       setShowSuggestions(value);
-    }, 300),
+    }, 50),
     []
   );
 
@@ -306,60 +306,77 @@ export default function HomePage() {
     }
   }, [isAuthenticated]);
 
+  const generateChatTitle = (message: string): string => {
+    const cleanMessage = message.toLowerCase().trim();
+
+    // If message is too long, truncate it
+    if (message.length > 30) {
+      return message.slice(0, 30) + "...";
+    }
+
+    return message;
+  };
+
+  const fetchTableMetadata = async () => {
+    if (!selectedDatabase) {
+      console.log("No database selected");
+      return;
+    }
+
+    try {
+      console.log("Fetching metadata for database:", selectedDatabase.name);
+      const response = await fetch(
+        "https://text2sql-backend.onrender.com/api/v1/metadata",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            host: selectedDatabase.host,
+            port: selectedDatabase.port,
+            database: selectedDatabase.database,
+            username: selectedDatabase.username,
+            password: selectedDatabase.password,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Metadata fetch failed:", response.status, errorText);
+        throw new Error(
+          `Failed to fetch metadata: ${response.status} - ${errorText}`
+        );
+      }
+
+      interface DatabaseMetadata {
+        [key: string]: Array<[string, string]>;
+      }
+
+      const data: DatabaseMetadata = await response.json();
+      console.log("Raw metadata response:", data);
+
+      const formattedMetadata = Object.entries(data).map(
+        ([tableName, columns]) => ({
+          name: tableName,
+          columns: columns.map(([name, type]) => ({ name, type })),
+        })
+      );
+      console.log("Formatted metadata:", formattedMetadata);
+      setTableMetadata(formattedMetadata);
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to fetch database metadata: ${errorMessage}`);
+    }
+  };
+
+  // Add effect to fetch metadata when database is selected
   useEffect(() => {
     if (selectedDatabase) {
-      const fetchMetadata = async () => {
-        try {
-          console.log("Fetching metadata for database:", selectedDatabase.name);
-          const response = await fetch(
-            "https://text2sql-backend.onrender.com/api/v1/metadata",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                host: selectedDatabase.host,
-                port: selectedDatabase.port,
-                database: selectedDatabase.database,
-                username: selectedDatabase.username,
-                password: selectedDatabase.password,
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Metadata fetch failed:", response.status, errorText);
-            throw new Error(
-              `Failed to fetch metadata: ${response.status} - ${errorText}`
-            );
-          }
-
-          interface DatabaseMetadata {
-            [key: string]: Array<[string, string]>;
-          }
-
-          const data: DatabaseMetadata = await response.json();
-          console.log("Raw metadata response:", data);
-
-          const formattedMetadata = Object.entries(data).map(
-            ([tableName, columns]) => ({
-              name: tableName,
-              columns: columns.map(([name, type]) => ({ name, type })),
-            })
-          );
-          console.log("Formatted metadata:", formattedMetadata);
-          setTableMetadata(formattedMetadata);
-        } catch (error) {
-          console.error("Error fetching metadata:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          toast.error(`Failed to fetch database metadata: ${errorMessage}`);
-        }
-      };
-
-      fetchMetadata();
+      fetchTableMetadata();
     }
   }, [selectedDatabase]);
 
