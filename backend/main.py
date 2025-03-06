@@ -466,7 +466,7 @@ async def chat(request: ChatRequest):
         load_dotenv()
         api_key = os.getenv("OPENAI_APIKEY")
         print(f"API Key loaded: {'Yes' if api_key else 'No'}")
-        api_key = os.getenv("OPENAI_APIKEY")
+        # api_key = os.getenv("OPENAI_APIKEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
         natural_language_query = request.message
@@ -504,7 +504,7 @@ async def chat(request: ChatRequest):
             print("Making OpenAI API call...")
             try:
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Using gpt-3.5-turbo
+                    model="gpt-4o-mini",  # Using gpt-3.5-turbo
                     messages=messages,
                     temperature=0
                 )
