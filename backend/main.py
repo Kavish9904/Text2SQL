@@ -26,6 +26,7 @@ from datetime import datetime
 import psycopg2
 import asyncpg
 import sqlite3
+import openai
 
 app = FastAPI()
 
@@ -474,10 +475,7 @@ async def chat(request: ChatRequest):
         
         try:
             print("Initializing OpenAI client...")
-            client = OpenAI(
-                api_key=api_key,
-                default_headers={"Content-Type": "application/json"}
-            )
+            openai.api_key = api_key
             print("OpenAI client initialized successfully")
             
             if database_credentials:
@@ -503,7 +501,7 @@ async def chat(request: ChatRequest):
 
             print("Making OpenAI API call...")
             try:
-                completion = client.chat.completions.create(
+                completion = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=messages,
                     temperature=0,
