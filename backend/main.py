@@ -268,6 +268,7 @@ async def chat(request: ChatRequest):
         # Extract table references and commands
         references = []
         commands = []
+        table_info = ""  # Initialize table_info variable
         
         # Split message into words
         words = message.split()
@@ -320,10 +321,36 @@ async def chat(request: ChatRequest):
             else:
                 DB_NAME = "PostgreSQL"  # default database
 
-            if table_info != "":
-                metadata_description = table_info
-            else:
-                metadata_description = "No metadata available"
+            metadata_description = "No metadata available"  # Default value
+            if references and database_credentials:
+                # Fetch table information if we have references and credentials
+                try:
+                    if database_credentials.get('type') == 'postgresql' or '.postgres.database.azure.com' in database_credentials.get('host', ''):
+                        conn = await asyncpg.connect(
+                            user=database_credentials['username'],
+                            password=database_credentials['password'],
+                            database=database_credentials['database'],
+                            host=database_credentials['host'],
+                            port=database_credentials['port'],
+                            ssl='require' if '.postgres.database.azure.com' in database_credentials['host'] else None
+                        )
+                        for reference in references:
+                            table_name = reference['table']
+                            columns = await conn.fetch("""
+                                SELECT column_name, data_type
+                                FROM information_schema.columns
+                                WHERE table_schema = 'public' AND table_name = $1
+                            """, table_name)
+                            
+                            table_info += f"Table '{table_name}' has the following columns:\n"
+                            for record in columns:
+                                table_info += f"- {record['column_name']} ({record['data_type']})\n"
+                            table_info += "\n"
+                        await conn.close()
+                        metadata_description = table_info if table_info else metadata_description
+                except Exception as db_error:
+                    print(f"Error fetching table metadata: {str(db_error)}")
+                    # Continue with default metadata description
             
             prompt2 = f"""You are a helpful {DB_NAME} database agent that takes queries in natural language and converts it into a {DB_NAME} query. The database metadata is as follows- {metadata_description}.
                 You must interact with the user as a database ai agent and convert the relevant user queries to {DB_NAME} query."""
