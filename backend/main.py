@@ -474,7 +474,10 @@ async def chat(request: ChatRequest):
         
         try:
             print("Initializing OpenAI client...")
-            client = OpenAI(api_key=api_key)  # Simplified initialization
+            client = OpenAI(
+                api_key=api_key,
+                default_headers={"Content-Type": "application/json"}
+            )
             print("OpenAI client initialized successfully")
             
             if database_credentials:
@@ -500,13 +503,14 @@ async def chat(request: ChatRequest):
 
             print("Making OpenAI API call...")
             try:
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Using the correct model name
+                completion = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
                     messages=messages,
-                    temperature=0
+                    temperature=0,
+                    max_tokens=1000
                 )
                 print("OpenAI API call successful")
-                openai_response = response.choices[0].message.content.strip()
+                openai_response = completion.choices[0].message.content.strip()
                 print("ASSISTANT RESPONSE:")
                 print(openai_response)
                 chat_history.append({"role": "assistant", "content": openai_response})
