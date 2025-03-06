@@ -503,9 +503,8 @@ async def chat(request: ChatRequest):
 
             print("Making OpenAI API call...")
             try:
-                print("Using model: gpt-3.5-turbo")
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Fixed model name
+                    model="gpt-4o-mini",  # Using gpt-3.5-turbo
                     messages=messages,
                     temperature=0
                 )
@@ -521,14 +520,8 @@ async def chat(request: ChatRequest):
                     return {"response": "Please rephrase your query to make it more specific and relevant to the database!"}
                     
             except Exception as api_error:
-                error_msg = str(api_error)
-                print(f"OpenAI API error details: {error_msg}")
-                if "model not found" in error_msg.lower():
-                    raise HTTPException(status_code=500, detail="Invalid model name specified")
-                elif "api key" in error_msg.lower():
-                    raise HTTPException(status_code=500, detail="OpenAI API key error. Please check your API key configuration")
-                else:
-                    raise HTTPException(status_code=500, detail=f"Error with OpenAI API: {error_msg}")
+                print(f"OpenAI API error details: {str(api_error)}")
+                raise HTTPException(status_code=500, detail=f"Error with OpenAI API: {str(api_error)}")
                 
         except Exception as client_error:
             print(f"Error initializing OpenAI client: {str(client_error)}")
