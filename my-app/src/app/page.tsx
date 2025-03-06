@@ -1095,13 +1095,8 @@ export default function HomePage() {
 
   const switchChat = async (sessionId: string) => {
     try {
-      const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
-      );
       // Load chat from backend
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/chats/${sessionId}?user_id=${currentUser.id}`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/chats/${sessionId}`);
       if (!response.ok) {
         throw new Error("Failed to load chat");
       }
@@ -1129,12 +1124,7 @@ export default function HomePage() {
 
   const refreshChatHistory = async () => {
     try {
-      const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
-      );
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/chats?user_id=${currentUser.id}`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/v1/chats`);
       if (!response.ok) {
         throw new Error("Failed to load chat history");
       }
@@ -1147,7 +1137,6 @@ export default function HomePage() {
           messages: Message[];
           createdAt: string;
           title: string;
-          user_id: string;
         }) => ({
           ...chat,
           createdAt: new Date(chat.createdAt),
