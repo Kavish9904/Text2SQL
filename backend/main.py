@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # import jwt
 # from datetime import datetime, timedelta
 
-from openai import OpenAI
+import openai
 from pydantic import BaseModel
 from typing import Optional, Literal, List
 import mysql.connector
@@ -26,7 +26,6 @@ from datetime import datetime
 import psycopg2
 import asyncpg
 import sqlite3
-import openai
 
 app = FastAPI()
 
