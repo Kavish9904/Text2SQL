@@ -363,14 +363,23 @@ async def chat(request: ChatRequest):
             messages = [
                 {"role": "system", "content": prompt2}
             ]
-            chat_history.append({"role": "user", "content": task2})
-            if chat_history:
-                messages.extend(chat_history)
+            
+            # Convert Message objects to dictionaries
+            formatted_history = []
+            for msg in chat_history:
+                if isinstance(msg, Message):
+                    formatted_history.append({"role": msg.role, "content": msg.content})
+                elif isinstance(msg, dict):
+                    formatted_history.append(msg)
+            
+            formatted_history.append({"role": "user", "content": task2})
+            if formatted_history:
+                messages.extend(formatted_history)
 
             print("Making OpenAI API call...")
             try:
                 completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-3.5-turbo",  # Changed from gpt-4o-mini to gpt-3.5-turbo
                     messages=messages,
                     temperature=0,
                     max_tokens=1000
