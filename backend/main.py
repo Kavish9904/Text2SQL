@@ -83,11 +83,13 @@ class ChatSession(BaseModel):
     messages: List[Message]
     createdAt: str
     title: str
+    user_id: str  # Add user_id field
 
 class ChatRequest(BaseModel):
     message: str
     history: List[Message]
-    database_credentials: Optional[dict] = None  # Add this field for database credentials
+    database_credentials: Optional[dict] = None
+    user_id: str  # Add user_id field
 
 class DatabaseMetadataRequest(BaseModel):
     host: str
@@ -454,20 +456,21 @@ def generate_chat_title(messages):
 
 
 @app.get("/api/v1/chats")
-async def get_chat_history():
+async def get_chat_history(user_id: str):  # Add user_id parameter
     try:
-        # Create chats directory if it doesn't exist
-        os.makedirs("chats", exist_ok=True)
+        # Create user-specific chats directory
+        user_chats_dir = f"chats/{user_id}"
+        os.makedirs(user_chats_dir, exist_ok=True)
 
-        # Read all chat files from the chats directory
+        # Read all chat files from the user's directory
         chat_files = []
-        if os.path.exists("chats"):
-            chat_files = [f for f in os.listdir("chats") if f.endswith(".json")]
+        if os.path.exists(user_chats_dir):
+            chat_files = [f for f in os.listdir(user_chats_dir) if f.endswith(".json")]
         
         chats = []
         for file in chat_files:
             try:
-                with open(f"chats/{file}", "r") as f:
+                with open(f"{user_chats_dir}/{file}", "r") as f:
                     data = json.load(f)
                     
                     # Handle case where file contains a list
@@ -476,7 +479,8 @@ async def get_chat_history():
                             "id": file.replace(".json", ""),
                             "messages": [],
                             "createdAt": datetime.now().isoformat(),
-                            "title": "New Chat"
+                            "title": "New Chat",
+                            "user_id": user_id
                         }
                         # Convert list items to messages if possible
                         for item in data:
@@ -492,6 +496,7 @@ async def get_chat_history():
                                 })
                     else:
                         chat = data if isinstance(data, dict) else {}
+                        chat["user_id"] = user_id  # Ensure user_id is set
                     
                     # Format messages
                     messages = chat.get("messages", [])
@@ -514,13 +519,14 @@ async def get_chat_history():
                         "id": chat.get("id", file.replace(".json", "")),
                         "messages": formatted_messages,
                         "createdAt": chat.get("createdAt", datetime.now().isoformat()),
-                        "title": chat.get("title") or generate_chat_title(formatted_messages)
+                        "title": chat.get("title") or generate_chat_title(formatted_messages),
+                        "user_id": user_id
                     }
                     
                     chats.append(formatted_chat)
                     
                     # Update the file with the fixed structure
-                    with open(f"chats/{file}", "w") as f:
+                    with open(f"{user_chats_dir}/{file}", "w") as f:
                         json.dump(formatted_chat, f, indent=2)
                         
             except (json.JSONDecodeError, IOError) as e:
@@ -532,7 +538,6 @@ async def get_chat_history():
             chats.sort(key=lambda x: x["createdAt"], reverse=True)
         except Exception as e:
             print(f"Error sorting chats: {str(e)}")
-            # Return unsorted chats if sorting fails
             return chats
             
         return chats
@@ -544,8 +549,9 @@ async def get_chat_history():
 @app.post("/api/v1/chats")
 async def save_chat(chat: ChatSession):
     try:
-        # Create chats directory if it doesn't exist
-        os.makedirs("chats", exist_ok=True)
+        # Create user-specific chats directory
+        user_chats_dir = f"chats/{chat.user_id}"
+        os.makedirs(user_chats_dir, exist_ok=True)
         
         # Generate title if not provided
         title = chat.title or generate_chat_title(chat.messages)
@@ -555,11 +561,12 @@ async def save_chat(chat: ChatSession):
             "id": chat.id,
             "messages": [{"role": msg.role, "content": msg.content} for msg in chat.messages],
             "createdAt": chat.createdAt,
-            "title": title
+            "title": title,
+            "user_id": chat.user_id
         }
         
-        # Save chat to a file
-        with open(f"chats/{chat.id}.json", "w") as f:
+        # Save chat to a file in the user's directory
+        with open(f"{user_chats_dir}/{chat.id}.json", "w") as f:
             json.dump(chat_data, f, indent=2)
         
         return {"message": "Chat saved successfully"}
@@ -569,10 +576,10 @@ async def save_chat(chat: ChatSession):
 
 
 @app.get("/api/v1/chats/{chat_id}")
-async def get_chat(chat_id: str):
+async def get_chat(chat_id: str, user_id: str):  # Add user_id parameter
     try:
-        # Check if chat file exists
-        chat_path = f"chats/{chat_id}.json"
+        # Check if chat file exists in user's directory
+        chat_path = f"chats/{user_id}/{chat_id}.json"
         if not os.path.exists(chat_path):
             raise HTTPException(status_code=404, detail="Chat not found")
         
@@ -580,6 +587,11 @@ async def get_chat(chat_id: str):
         try:
             with open(chat_path, "r") as f:
                 chat = json.load(f)
+                
+            # Verify that the chat belongs to the requesting user
+            if chat.get("user_id") != user_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+                
             return chat
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error reading chat file {chat_id}: {str(e)}")
@@ -593,12 +605,22 @@ async def get_chat(chat_id: str):
 
 
 @app.delete("/api/v1/chats/{chat_id}")
-async def delete_chat(chat_id: str):
+async def delete_chat(chat_id: str, user_id: str):  # Add user_id parameter
     try:
-        # Check if chat file exists
-        chat_path = f"chats/{chat_id}.json"
+        # Check if chat file exists in user's directory
+        chat_path = f"chats/{user_id}/{chat_id}.json"
         if not os.path.exists(chat_path):
             raise HTTPException(status_code=404, detail="Chat not found")
+        
+        # Verify chat ownership before deletion
+        try:
+            with open(chat_path, "r") as f:
+                chat = json.load(f)
+                if chat.get("user_id") != user_id:
+                    raise HTTPException(status_code=403, detail="Access denied")
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error reading chat file {chat_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error reading chat: {str(e)}")
         
         # Delete chat file
         try:
