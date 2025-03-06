@@ -99,10 +99,15 @@ class DatabaseMetadataRequest(BaseModel):
 @app.post("/api/test-connection")
 async def test_connection(connection: DatabaseConnection):
     try:
+        print(f"\nTesting connection to: {connection.host}")
+        print(f"Port: {connection.port}")
+        print(f"Database: {connection.database}")
+        print(f"Username: {connection.username}")
+        
         if '.mysql.database.azure.com' in connection.host:
             # Format username correctly for Azure
-            server_name = connection.host.split('.')[0]  # Gets 'smartquery2' from the host
-            full_username = f"{connection.username}"  # Don't append server name here
+            server_name = connection.host.split('.')[0]  # Gets server name from the host
+            full_username = f"{connection.username}"
             
             config = {
                 'host': connection.host,
@@ -114,33 +119,51 @@ async def test_connection(connection: DatabaseConnection):
                 'ssl_verify_cert': True
             }
             
-            print("\n=== Connection Config ===")
+            print("\n=== MySQL Connection Config ===")
             print({**config, 'password': '****'})
             print("=======================\n")
             
-            conn = mysql.connector.connect(**config)
-            conn.close()
-            return {"success": True, "message": "Connection successful!"}
+            try:
+                conn = mysql.connector.connect(**config)
+                conn.close()
+                return {"success": True, "message": "MySQL connection successful!"}
+            except mysql.connector.Error as mysql_error:
+                print(f"MySQL connection error: {str(mysql_error)}")
+                raise HTTPException(status_code=400, detail=f"MySQL connection error: {str(mysql_error)}")
         
         elif '.postgres.database.azure.com' in connection.host or connection.port == 5432:
             # PostgreSQL
-            conn = await asyncpg.connect(
-                user=connection.username,
-                password=connection.password,
-                database=connection.database,
-                host=connection.host,
-                port=connection.port,
-                ssl='require' if '.postgres.database.azure.com' in connection.host else None
-            )
-            await conn.close()
-            return {"success": True, "message": "Connection successful!"}
+            try:
+                print("\n=== PostgreSQL Connection Config ===")
+                print(f"Host: {connection.host}")
+                print(f"Port: {connection.port}")
+                print(f"Database: {connection.database}")
+                print(f"Username: {connection.username}")
+                print("=======================\n")
+                
+                conn = await asyncpg.connect(
+                    user=connection.username,
+                    password=connection.password,
+                    database=connection.database,
+                    host=connection.host,
+                    port=connection.port,
+                    ssl='require' if '.postgres.database.azure.com' in connection.host else None
+                )
+                await conn.close()
+                return {"success": True, "message": "PostgreSQL connection successful!"}
+            except asyncpg.PostgresError as pg_error:
+                print(f"PostgreSQL connection error: {str(pg_error)}")
+                raise HTTPException(status_code=400, detail=f"PostgreSQL connection error: {str(pg_error)}")
         
         else:
-            raise Exception("Unsupported database type. Currently supporting PostgreSQL and MySQL.")
+            error_msg = "Unsupported database type. Currently supporting PostgreSQL and MySQL."
+            print(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
 
     except Exception as e:
-        print(f"Connection error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        error_msg = f"Connection error: {str(e)}"
+        print(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
 
 # def open_connection():
 #     return psycopg2.connect(global_connstr)
