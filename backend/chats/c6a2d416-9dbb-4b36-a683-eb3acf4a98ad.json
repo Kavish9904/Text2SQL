@@ -48,6 +48,14 @@
     {
       "role": "assistant",
       "content": "To join the `sql_queries` and `users` tables, you can use the following SQL query. This assumes you want to join them on the `user_id` from the `sql_queries` table and the `id` from the `users` table:\n\n```sql\nSELECT sql_queries.*, users.*\nFROM sql_queries\nJOIN users ON sql_queries.user_id = users.id;\n```\n\nWould you like to ask anything else?"
+    },
+    {
+      "role": "user",
+      "content": "hi"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you today? If you have any database queries or questions, feel free to ask!"
     }
   ],
   "createdAt": "2025-03-05T20:46:12.771Z",
