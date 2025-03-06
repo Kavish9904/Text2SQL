@@ -35,14 +35,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # For local development
         "https://text2sql-frontend.onrender.com",  # Your deployed frontend URL
-        "https://text2sql-frontend.onrender.com/",  # With trailing slash
-        "https://text2sql-frontend.onrender.com:443",  # With explicit port
-        "https://text2sql-frontend.onrender.com:443/",  # With explicit port and trailing slash
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]  # Add this to expose all headers
 )
 
 @app.get("/")
@@ -466,17 +462,13 @@ async def chat(request: ChatRequest):
         #     return {"response": f"Error fetching table information: {str(db_error)}"}
         
         # Handle different types of queries
-        print("INSIDE CHAT() FUNCTION")
+        # print("INSIDE CHAT() FUNCTION")
         load_dotenv()
         api_key = os.getenv("OPENAI_APIKEY")
         print(f"API Key loaded: {'Yes' if api_key else 'No'}")
-        print(f"API Key length: {len(api_key) if api_key else 'None'}")  # Add this to check key length
-        
+        # api_key = os.getenv("OPENAI_APIKEY")
         if not api_key:
-            print("ERROR: OpenAI API key not found in environment variables")
-            print("Available environment variables:", list(os.environ.keys()))  # Add this to debug
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-            
         natural_language_query = request.message
         chat_history = request.history
         
@@ -484,8 +476,7 @@ async def chat(request: ChatRequest):
             print("Initializing OpenAI client...")
             client = OpenAI(
                 api_key=api_key,
-                base_url="https://api.openai.com/v1",  # Explicitly set the base URL
-                timeout=60.0  # Add a longer timeout
+                base_url="https://api.openai.com/v1"  # Explicitly set the base URL
             )
             print("OpenAI client initialized successfully")
             
@@ -513,7 +504,7 @@ async def chat(request: ChatRequest):
             print("Making OpenAI API call...")
             try:
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Using gpt-3.5-turbo
+                    model="gpt-4o-mini",  # Using gpt-3.5-turbo
                     messages=messages,
                     temperature=0
                 )
@@ -566,22 +557,17 @@ def generate_chat_title(messages):
 async def get_chat_history():
     try:
         # Create chats directory if it doesn't exist
-        chats_dir = os.path.join(os.getcwd(), "chats")
-        os.makedirs(chats_dir, exist_ok=True)
-        print(f"Chats directory path: {chats_dir}")
-        print(f"Chats directory exists: {os.path.exists(chats_dir)}")
-        print(f"Chats directory is writable: {os.access(chats_dir, os.W_OK)}")
+        os.makedirs("chats", exist_ok=True)
 
         # Read all chat files from the chats directory
         chat_files = []
-        if os.path.exists(chats_dir):
-            chat_files = [f for f in os.listdir(chats_dir) if f.endswith(".json")]
-        print(f"Found {len(chat_files)} chat files")
+        if os.path.exists("chats"):
+            chat_files = [f for f in os.listdir("chats") if f.endswith(".json")]
         
         chats = []
         for file in chat_files:
             try:
-                with open(f"{chats_dir}/{file}", "r") as f:
+                with open(f"chats/{file}", "r") as f:
                     data = json.load(f)
                     
                     # Handle case where file contains a list
@@ -634,7 +620,7 @@ async def get_chat_history():
                     chats.append(formatted_chat)
                     
                     # Update the file with the fixed structure
-                    with open(f"{chats_dir}/{file}", "w") as f:
+                    with open(f"chats/{file}", "w") as f:
                         json.dump(formatted_chat, f, indent=2)
                         
             except (json.JSONDecodeError, IOError) as e:
