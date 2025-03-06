@@ -537,7 +537,9 @@ export default function HomePage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(updatedChat),
+          body: JSON.stringify({
+            ...updatedChat,
+          }),
         });
 
         // Get assistant response with metadata
@@ -595,7 +597,9 @@ export default function HomePage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(finalUpdatedChat),
+          body: JSON.stringify({
+            ...finalUpdatedChat,
+          }),
         });
 
         // Update chat sessions state
@@ -624,6 +628,7 @@ export default function HomePage() {
       setInputMessage,
       setChatSessions,
       selectedDatabase,
+      currentUser,
     ]
   );
 

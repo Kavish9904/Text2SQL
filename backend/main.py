@@ -83,13 +83,11 @@ class ChatSession(BaseModel):
     messages: List[Message]
     createdAt: str
     title: str
-    user_id: str  # Add user_id field
 
 class ChatRequest(BaseModel):
     message: str
     history: List[Message]
     database_credentials: Optional[dict] = None
-    user_id: str  # Add user_id field
 
 class DatabaseMetadataRequest(BaseModel):
     host: str
