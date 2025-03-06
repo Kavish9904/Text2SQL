@@ -474,10 +474,7 @@ async def chat(request: ChatRequest):
         
         try:
             print("Initializing OpenAI client...")
-            client = OpenAI(
-                api_key=api_key,
-                base_url="https://api.openai.com/v1"  # Explicitly set the base URL
-            )
+            client = OpenAI(api_key=api_key)  # Simplified initialization
             print("OpenAI client initialized successfully")
             
             if database_credentials:
@@ -504,7 +501,7 @@ async def chat(request: ChatRequest):
             print("Making OpenAI API call...")
             try:
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",  # Using gpt-3.5-turbo
+                    model="gpt-3.5-turbo",  # Using the correct model name
                     messages=messages,
                     temperature=0
                 )
