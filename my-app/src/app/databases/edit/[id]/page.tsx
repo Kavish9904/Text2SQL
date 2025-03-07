@@ -1,3 +1,5 @@
+"use client";
+
 import EditDatabaseContent from "./EditDatabaseContent";
 
 // This generates all possible paths at build time
