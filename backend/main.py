@@ -26,6 +26,7 @@ from datetime import datetime
 import psycopg2
 import asyncpg
 import sqlite3
+from openai import OpenAI
 
 app = FastAPI()
 
@@ -400,11 +401,11 @@ async def chat(request: ChatRequest):
 
             print("Making OpenAI API call...")
             try:
-                completion = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",  # Changed from gpt-4o-mini to gpt-3.5-turbo
+                client = OpenAI(api_key=api_key)
+                completion = client.chat.completions.create(
+                    model="gpt-4o-mini",  # Changed from gpt-4o-mini to gpt-3.5-turbo (NO NEED TO CHANGE)
                     messages=messages,
-                    temperature=0,
-                    max_tokens=1000
+                    temperature=0
                 )
                 print("OpenAI API call successful")
                 openai_response = completion.choices[0].message.content.strip()
