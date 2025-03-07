@@ -11,8 +11,6 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
   },
-  distDir: ".next",
-  basePath: "",
 };
 
 module.exports = nextConfig;
