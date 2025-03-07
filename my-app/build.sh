@@ -13,10 +13,11 @@ npm run build
 mkdir -p build
 
 # Copy the static export to build directory (only if the build succeeds)
-if [ -d ".next" ]; then
+if [ -d "out" ]; then
+  # Copy all files from out directory to build
+  cp -r out/* build/
+elif [ -d ".next" ]; then
+  # Fallback to .next directory if out doesn't exist
   cp -r .next build/
-  [ -d "public" ] && cp -r public build/
-  [ -d ".next/static" ] && cp -r .next/static build/
-  [ -d ".next/server/app" ] && cp -r .next/server/app build/
-  [ -d ".next/server/pages" ] && cp -r .next/server/pages build/
+  [ -d "public" ] && cp -r public/* build/
 fi 

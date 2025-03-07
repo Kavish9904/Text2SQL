@@ -27,12 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
-      >
-        {children}
-        <Toaster />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
