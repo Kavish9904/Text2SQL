@@ -10,7 +10,6 @@ const nextConfig = {
   assetPrefix: "",
   experimental: {
     optimizeCss: false,
-    missingSuspenseWithCSRError: false,
   },
 };
 
