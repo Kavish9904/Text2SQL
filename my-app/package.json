@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm install && npm install --save-dev eslint eslint-config-next && next build && mkdir -p build && cp -r out/* build/",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -41,6 +41,8 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@shadcn/ui": "^0.0.4"
+    "@shadcn/ui": "^0.0.4",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0"
   }
 }

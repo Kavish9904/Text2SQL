@@ -14,6 +14,14 @@ interface DatabaseConnection {
   host: string;
 }
 
+// Add this function at the top level, before the component
+export async function generateStaticParams() {
+  // Since our database IDs are dynamic and stored in localStorage,
+  // we'll return an empty array for build time
+  // The actual data will be handled client-side
+  return [];
+}
+
 // This is a client component, so we'll handle the dynamic nature on the client side
 export default function EditDatabasePage({
   params,
