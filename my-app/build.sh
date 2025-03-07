@@ -10,4 +10,6 @@ npm run build
 mkdir -p build
 
 # Copy the static export to build directory
-cp -r out/* build/ 
+cp -r .next/static build/
+cp -r .next/server/app build/
+cp -r .next/server/pages build/ 
