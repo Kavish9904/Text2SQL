@@ -59,11 +59,6 @@ export default function PostgresConnectPage() {
             database: formData.database,
             username: formData.username,
             password: formData.password,
-            ip_whitelist: ipAddresses,
-            ssl: {
-              rejectUnauthorized: true,
-              require: true,
-            },
           }),
         }
       );
@@ -100,10 +95,6 @@ export default function PostgresConnectPage() {
         username: formData.username,
         password: formData.password,
         lastUsed: new Date().toISOString(),
-        ssl: {
-          rejectUnauthorized: true,
-          require: true,
-        },
       };
 
       existingConnections.push(dbConnection);
@@ -134,7 +125,7 @@ export default function PostgresConnectPage() {
           Back to Integrations
         </Button>
 
-        <h1 className="text-2xl font-bold mb-8">Connect Postgres Database</h1>
+        <h1 className="text-2xl font-bold mb-8">Connect PostgreSQL Database</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -149,7 +140,7 @@ export default function PostgresConnectPage() {
               name="displayName"
               value={formData.displayName}
               onChange={handleInputChange}
-              placeholder="My Postgres Database"
+              placeholder="PostgreSQL Database"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -160,14 +151,14 @@ export default function PostgresConnectPage() {
               Host address<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Host URL of the Postgres database
+              Host URL/IP of the PostgreSQL database
             </div>
             <Input
               id="hostAddress"
               name="hostAddress"
               value={formData.hostAddress}
               onChange={handleInputChange}
-              placeholder="my-postgres-database.com"
+              placeholder="postgresql-database.com"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -178,7 +169,7 @@ export default function PostgresConnectPage() {
               Port<span className="text-red-500 ml-0.5">*</span>
             </Label>
             <div className="text-sm text-gray-500 mb-1">
-              Port at which the Postgres database is running
+              Port at which the PostgreSQL database is running
             </div>
             <Input
               id="port"
@@ -220,7 +211,6 @@ export default function PostgresConnectPage() {
               name="username"
               value={formData.username}
               onChange={handleInputChange}
-              placeholder="postgres"
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
@@ -244,39 +234,9 @@ export default function PostgresConnectPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>IP Whitelist</Label>
-            <div className="text-sm text-gray-500 mb-1">
-              Please whitelist the following IPs if your database has a firewall
-            </div>
-            <div className="space-y-2">
-              {ipAddresses.map((ip) => (
-                <div
-                  key={ip}
-                  className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md"
-                >
-                  <code className="text-gray-900">{ip}</code>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => copyToClipboard(ip)}
-                    className="h-8 w-8 text-gray-500 hover:text-gray-900"
-                  >
-                    {copiedIPs[ip] ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <Button
             type="submit"
-            className="w-full bg-black text-white hover:bg-gray-900"
+            className="w-full bg-black text-white hover:bg-gray-800"
             disabled={testing}
           >
             {testing ? "Testing Connection..." : "Test and Save Connection"}

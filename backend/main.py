@@ -61,7 +61,6 @@ class DatabaseConnection(BaseModel):
     database: str
     username: str
     password: str
-    ip_whitelist: list[str]
 
 # Add this class for query requests
 class QueryRequest(BaseModel):

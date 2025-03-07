@@ -10,6 +10,7 @@ import {
   Trash2,
   Grid,
   Plus,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -175,13 +176,21 @@ export default function DatabasesPage() {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="text-black">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Connection
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-white min-w-[160px]"
+                    >
+                      <DropdownMenuItem
+                        className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          router.push(`/databases/edit/${database.id}`);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        className="text-red-600"
+                        className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
                         onClick={() => {
                           setDatabaseToDelete(database.id);
                         }}

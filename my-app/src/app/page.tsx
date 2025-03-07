@@ -20,6 +20,9 @@ import {
   Check,
   Zap,
   BarChart2,
+  ArrowLeft,
+  Copy,
+  Hourglass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -705,16 +708,12 @@ export default function HomePage() {
         lastAtIndex !== -1 &&
         (nextSpaceIndex === -1 || cursorPosition <= nextSpaceIndex);
 
-      // Check for / symbol
-      const lastSlashIndex = value.lastIndexOf("/", cursorPosition);
-      const nextSpaceAfterSlash = value.indexOf(" ", lastSlashIndex);
-      const isTypingAfterSlash =
-        lastSlashIndex !== -1 &&
-        (nextSpaceAfterSlash === -1 || cursorPosition <= nextSpaceAfterSlash);
-
       if (isTypingAfterAt) {
+        console.log("@ detected, showing suggestions"); // Debug log
         const rect = e.target.getBoundingClientRect();
         const textBeforeCursor = value.substring(0, cursorPosition);
+        const searchQuery = value.substring(lastAtIndex + 1, cursorPosition);
+        console.log("Search query:", searchQuery); // Debug log
 
         // Create temporary span for width calculation
         const tempSpan = document.createElement("span");
@@ -734,7 +733,7 @@ export default function HomePage() {
           parseInt(getComputedStyle(e.target).paddingLeft) || 0;
         const suggestionsLeft = Math.min(
           rect.left + inputPadding + textWidth,
-          rect.right - 300 // Ensure suggestions don't go off-screen
+          rect.right - 300
         );
 
         setCursorPosition({
@@ -742,9 +741,21 @@ export default function HomePage() {
           left: suggestionsLeft,
         });
 
+        // Always keep suggestions open while typing after @
         setShowSuggestions(true);
         setShowCommandSuggestions(false);
-      } else if (isTypingAfterSlash) {
+      } else {
+        setShowSuggestions(false);
+      }
+
+      // Check for / symbol
+      const lastSlashIndex = value.lastIndexOf("/", cursorPosition);
+      const nextSpaceAfterSlash = value.indexOf(" ", lastSlashIndex);
+      const isTypingAfterSlash =
+        lastSlashIndex !== -1 &&
+        (nextSpaceAfterSlash === -1 || cursorPosition <= nextSpaceAfterSlash);
+
+      if (isTypingAfterSlash) {
         const rect = e.target.getBoundingClientRect();
         const textBeforeCursor = value.substring(0, cursorPosition);
 
@@ -766,7 +777,7 @@ export default function HomePage() {
           parseInt(getComputedStyle(e.target).paddingLeft) || 0;
         const suggestionsLeft = Math.min(
           rect.left + inputPadding + textWidth,
-          rect.right - 300 // Ensure suggestions don't go off-screen
+          rect.right - 300
         );
 
         setCursorPosition({
@@ -777,7 +788,6 @@ export default function HomePage() {
         setShowCommandSuggestions(true);
         setShowSuggestions(false);
       } else {
-        setShowSuggestions(false);
         setShowCommandSuggestions(false);
       }
     },
@@ -876,22 +886,6 @@ export default function HomePage() {
             placeholder="@ for objects or / for commands"
             className="pr-10 text-gray-900 placeholder:text-gray-600"
             disabled={isLoading || !selectedDatabase}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setShowSuggestions(false);
-                setShowCommandSuggestions(false);
-              }
-            }}
-            onClick={(e) => {
-              const value = (e.target as HTMLInputElement).value;
-              const lastAtIndex = value.lastIndexOf("@");
-              const lastSlashIndex = value.lastIndexOf("/");
-              if (lastAtIndex !== -1) {
-                debouncedSetShowSuggestions(true);
-              } else if (lastSlashIndex !== -1) {
-                setShowCommandSuggestions(true);
-              }
-            }}
           />
           <Button
             type="submit"
@@ -906,20 +900,26 @@ export default function HomePage() {
               <ChevronRight className="h-4 w-4" />
             )}
           </Button>
-          {tableMetadata && tableMetadata.length > 0 && (
+          {tableMetadata && tableMetadata.length > 0 && showSuggestions && (
             <TableSuggestions
               isOpen={showSuggestions}
               onClose={() => setShowSuggestions(false)}
               tables={tableMetadata}
               onSelect={handleSuggestionSelect}
-              triggerRef={suggestionsRef as React.RefObject<HTMLElement>}
+              triggerRef={suggestionsRef}
+              initialSearchQuery={inputMessage
+                .substring(
+                  inputMessage.lastIndexOf("@") + 1,
+                  inputRef.current?.selectionStart || inputMessage.length
+                )
+                .trim()}
             />
           )}
           <CommandSuggestions
             isOpen={showCommandSuggestions}
             onClose={() => setShowCommandSuggestions(false)}
             onSelect={handleCommandSelect}
-            triggerRef={commandSuggestionsRef as React.RefObject<HTMLElement>}
+            triggerRef={commandSuggestionsRef}
           />
           <div
             ref={suggestionsRef}
@@ -954,7 +954,6 @@ export default function HomePage() {
       handleSendMessage,
       handleSuggestionSelect,
       handleCommandSelect,
-      debouncedSetShowSuggestions,
     ]
   );
 
@@ -994,6 +993,33 @@ export default function HomePage() {
       toast.error("Failed to delete chat");
     }
   };
+
+  // Add new effect to load queries from localStorage on mount
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      const savedQueries = localStorage.getItem(`queries_${currentUser.email}`);
+      if (savedQueries) {
+        const parsedQueries = JSON.parse(savedQueries).map((query: any) => ({
+          ...query,
+          createdAt: new Date(query.createdAt),
+        }));
+        setQueries(parsedQueries);
+      }
+    }
+  }, [isAuthenticated, currentUser]);
+
+  // Add new function to save queries to localStorage
+  const saveQueriesToLocalStorage = useCallback(
+    (updatedQueries: Query[]) => {
+      if (currentUser?.email) {
+        localStorage.setItem(
+          `queries_${currentUser.email}`,
+          JSON.stringify(updatedQueries)
+        );
+      }
+    },
+    [currentUser]
+  );
 
   const handleQueryRun = async () => {
     if (!queryContent.trim() || !selectedDatabase) {
@@ -1042,7 +1068,9 @@ export default function HomePage() {
           results: data.data,
         };
 
-        setQueries((prev) => [...prev, newQuery]);
+        const updatedQueries = [...queries, newQuery];
+        setQueries(updatedQueries);
+        saveQueriesToLocalStorage(updatedQueries);
         setActiveQueryId(newQuery.id);
       } else {
         setQueryError("No results returned");
@@ -1066,7 +1094,9 @@ export default function HomePage() {
       results: null,
     };
 
-    setQueries((prev) => [...prev, newQuery]);
+    const updatedQueries = [...queries, newQuery];
+    setQueries(updatedQueries);
+    saveQueriesToLocalStorage(updatedQueries);
     setActiveQueryId(newQuery.id);
     setQueryContent("");
     setQueryResults(null);
@@ -1085,7 +1115,9 @@ export default function HomePage() {
 
   const deleteQuery = (queryId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setQueries((prev) => prev.filter((query) => query.id !== queryId));
+    const updatedQueries = queries.filter((query) => query.id !== queryId);
+    setQueries(updatedQueries);
+    saveQueriesToLocalStorage(updatedQueries);
 
     if (queryId === activeQueryId) {
       setActiveQueryId(null);
@@ -1628,6 +1660,13 @@ export default function HomePage() {
                       Error executing query
                     </div>
                     <div className="text-sm text-gray-600">{queryError}</div>
+                  </div>
+                ) : isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                    <Hourglass className="h-8 w-8 text-gray-400 animate-spin mb-2" />
+                    <div className="text-sm text-gray-600">
+                      Executing query...
+                    </div>
                   </div>
                 ) : queryResults ? (
                   <>

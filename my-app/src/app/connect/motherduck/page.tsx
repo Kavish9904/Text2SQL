@@ -22,22 +22,11 @@ export default function MotherDuckConnectPage() {
     username: "",
     password: "",
   });
-  const [copiedIPs, setCopiedIPs] = useState<{ [key: string]: boolean }>({});
   const [testing, setTesting] = useState(false);
-
-  const ipAddresses = ["139.59.53.167", "165.22.217.42"];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const copyToClipboard = async (ip: string) => {
-    await navigator.clipboard.writeText(ip);
-    setCopiedIPs((prev) => ({ ...prev, [ip]: true }));
-    setTimeout(() => {
-      setCopiedIPs((prev) => ({ ...prev, [ip]: false }));
-    }, 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +49,6 @@ export default function MotherDuckConnectPage() {
             database: formData.database,
             username: formData.username,
             password: formData.password,
-            ip_whitelist: ipAddresses,
           }),
         }
       );
@@ -258,36 +246,6 @@ export default function MotherDuckConnectPage() {
               className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
               required
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>IP Whitelist</Label>
-            <div className="text-sm text-gray-500 mb-1">
-              Please whitelist the following IPs if your database has a firewall
-            </div>
-            <div className="space-y-2">
-              {ipAddresses.map((ip) => (
-                <div
-                  key={ip}
-                  className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md"
-                >
-                  <code className="text-gray-900">{ip}</code>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => copyToClipboard(ip)}
-                    className="h-8 w-8 text-gray-500 hover:text-gray-900"
-                  >
-                    {copiedIPs[ip] ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              ))}
-            </div>
           </div>
 
           <Button

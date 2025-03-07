@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "export",
+  output: "standalone",
   reactStrictMode: true,
   swcMinify: true,
   images: {
@@ -10,6 +10,7 @@ const nextConfig = {
   assetPrefix: "",
   experimental: {
     optimizeCss: false,
+    missingSuspenseWithCSRError: false,
   },
 };
 

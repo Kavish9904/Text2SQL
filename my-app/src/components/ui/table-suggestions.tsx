@@ -23,6 +23,7 @@ interface TableSuggestionsProps {
   onSelect: (value: string) => void;
   tables?: TableMetadata[];
   triggerRef: React.RefObject<HTMLElement>;
+  initialSearchQuery?: string;
 }
 
 export function TableSuggestions({
@@ -31,23 +32,21 @@ export function TableSuggestions({
   onSelect,
   tables = [],
   triggerRef,
+  initialSearchQuery = "",
 }: TableSuggestionsProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  // Update search query when initialSearchQuery changes
+  React.useEffect(() => {
+    setSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery]);
+
+  // Reset search when dropdown closes
   React.useEffect(() => {
     if (!isOpen) {
       setSearchQuery("");
     }
   }, [isOpen]);
-
-  const handleSelect = React.useCallback(
-    (value: string) => {
-      console.log("handleSelect called with:", value);
-      onSelect(value);
-      onClose();
-    },
-    [onSelect, onClose]
-  );
 
   // Pre-process tables and columns once on mount
   const processedData = useMemo(() => {
@@ -62,37 +61,42 @@ export function TableSuggestions({
       table.columns.map((column) => ({
         ...column,
         tableName: table.name,
-        searchKey: `${column.name.toLowerCase()} ${table.name.toLowerCase()}`,
+        searchKey: `${column.name.toLowerCase()}`,
       }))
     );
 
     return { allTables, allColumns };
   }, [tables]);
 
-  // Efficient filtering using pre-processed data
+  // Enhanced filtering using pre-processed data
   const { filteredTables, filteredColumns } = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
+    // If query is empty, show all tables and columns
     if (!query) {
-      // Show all tables and all columns when no search query
       return {
         filteredTables: processedData.allTables,
         filteredColumns: processedData.allColumns,
       };
     }
 
+    // Filter tables that start with the query
+    const tables = processedData.allTables.filter((table) =>
+      table.name.toLowerCase().startsWith(query)
+    );
+
+    // Filter columns that start with the query
+    const columns = processedData.allColumns.filter((column) =>
+      column.name.toLowerCase().startsWith(query)
+    );
+
     return {
-      filteredTables: processedData.allTables.filter((table) =>
-        table.searchKey.includes(query)
-      ),
-      filteredColumns: processedData.allColumns.filter((column) =>
-        column.searchKey.includes(query)
-      ),
+      filteredTables: tables,
+      filteredColumns: columns,
     };
   }, [processedData, searchQuery]);
 
   if (!Array.isArray(tables)) {
-    console.warn("TableSuggestions: tables prop must be an array");
     return null;
   }
 
@@ -102,67 +106,82 @@ export function TableSuggestions({
         <span ref={triggerRef} />
       </PopoverTrigger>
       <PopoverContent
-        className="p-0 w-[400px]"
+        className="p-2 w-[400px]"
         sideOffset={5}
         align="start"
         side="bottom"
       >
-        <Command>
-          <CommandInput
-            placeholder="Type to filter tables and columns..."
+        <div className="space-y-2">
+          <input
+            type="text"
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tables and columns..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoFocus
           />
-          <CommandList className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[300px] overflow-y-auto">
             {filteredTables.length === 0 && filteredColumns.length === 0 ? (
-              <CommandEmpty>No matches found.</CommandEmpty>
+              <div className="text-center py-4 text-gray-500">
+                No results found
+              </div>
             ) : (
               <>
-                <CommandGroup heading="Tables">
-                  {filteredTables.map((table) => (
-                    <div
-                      key={table.name}
-                      className="flex items-center px-2 py-2 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleSelect(`${table.name}.*`)}
-                    >
-                      <Database className="h-4 w-4 mr-2 text-gray-500" />
-                      <span className="flex-1 font-medium">{table.name}</span>
-                      <span className="text-xs text-gray-400">
-                        ({table.columns.length} columns)
-                      </span>
+                {filteredTables.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 px-2">
+                      TABLES
                     </div>
-                  ))}
-                </CommandGroup>
-
-                <CommandGroup heading="Columns">
-                  {filteredColumns.map((column, index) => (
-                    <div
-                      key={`${column.tableName}.${column.name}-${index}`}
-                      className="flex items-center px-2 py-2 hover:bg-gray-50 cursor-pointer group"
-                      onClick={() =>
-                        handleSelect(`${column.tableName}.${column.name}`)
-                      }
-                    >
-                      <Table className="h-4 w-4 mr-2 text-gray-500" />
-                      <div className="flex flex-col flex-1">
-                        <span className="text-sm font-medium">
-                          {column.name}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          in {column.tableName}
+                    {filteredTables.map((table) => (
+                      <div
+                        key={table.name}
+                        className="flex items-center px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded-md"
+                        onClick={() => {
+                          onSelect(`${table.name}.*`);
+                          onClose();
+                        }}
+                      >
+                        <Database className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="flex-1 text-sm">{table.name}</span>
+                        <span className="text-xs text-gray-400">
+                          ({table.columns.length} columns)
                         </span>
                       </div>
-                      <span className="text-xs text-gray-400 group-hover:text-gray-600">
-                        {column.type}
-                      </span>
+                    ))}
+                  </div>
+                )}
+                {filteredColumns.length > 0 && (
+                  <div className="mt-4">
+                    <div className="text-xs font-semibold text-gray-500 mb-2 px-2">
+                      COLUMNS
                     </div>
-                  ))}
-                </CommandGroup>
+                    {filteredColumns.map((column, index) => (
+                      <div
+                        key={`${column.tableName}.${column.name}-${index}`}
+                        className="flex items-center px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded-md"
+                        onClick={() => {
+                          onSelect(`${column.tableName}.${column.name}`);
+                          onClose();
+                        }}
+                      >
+                        <Table className="h-4 w-4 mr-2 text-gray-500" />
+                        <div className="flex flex-col flex-1">
+                          <span className="text-sm">{column.name}</span>
+                          <span className="text-xs text-gray-500">
+                            in {column.tableName}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {column.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
-          </CommandList>
-        </Command>
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
