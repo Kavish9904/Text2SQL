@@ -117,6 +117,16 @@ export default function DatabasesPage() {
     router.push("/connect");
   };
 
+  const handleEditClick = (
+    e: React.MouseEvent,
+    database: DatabaseConnection
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleEdit(database);
+    return false;
+  };
+
   if (databases.length === 0) {
     return (
       <div className="min-h-screen bg-white">
@@ -217,22 +227,28 @@ export default function DatabasesPage() {
                       className="bg-white min-w-[160px]"
                     >
                       <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
                         className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        asChild
                       >
-                        <div onClick={() => handleEdit(database)}>
+                        <button
+                          className="flex items-center w-full"
+                          onClick={(e) => handleEditClick(e, database)}
+                        >
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
-                        </div>
+                        </button>
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
                         className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
-                        asChild
                       >
-                        <div onClick={() => setDatabaseToDelete(database.id)}>
+                        <button
+                          className="flex items-center w-full"
+                          onClick={() => setDatabaseToDelete(database.id)}
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
-                        </div>
+                        </button>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

@@ -11,6 +11,8 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
   },
+  // Disable automatic static optimization for the databases page
+  unstable_runtimeJS: true,
 };
 
 module.exports = nextConfig;
