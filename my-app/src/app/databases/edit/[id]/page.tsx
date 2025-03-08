@@ -1,11 +1,6 @@
-import EditDatabaseContent from "./EditDatabaseContent";
+"use client";
 
-// This generates all possible paths at build time
-export function generateStaticParams() {
-  // Since we can't access localStorage at build time,
-  // we'll generate a dummy ID that will be replaced by actual IDs at runtime
-  return [{ id: "placeholder" }];
-}
+import EditDatabaseContent from "./EditDatabaseContent";
 
 export default function EditDatabasePage({
   params,
