@@ -55,6 +55,7 @@ export default function DatabasesPage() {
   const [databaseToEdit, setDatabaseToEdit] =
     useState<DatabaseConnection | null>(null);
   const [newName, setNewName] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     console.log("Current path:", window.location.pathname);
@@ -90,6 +91,7 @@ export default function DatabasesPage() {
   const handleEdit = (database: DatabaseConnection) => {
     setDatabaseToEdit(database);
     setNewName(database.name);
+    setIsEditDialogOpen(true);
   };
 
   const confirmEdit = () => {
@@ -104,6 +106,7 @@ export default function DatabasesPage() {
       );
       setDatabaseToEdit(null);
       setNewName("");
+      setIsEditDialogOpen(false);
       toast.success("Database name updated");
     }
   };
@@ -215,7 +218,10 @@ export default function DatabasesPage() {
                     >
                       <DropdownMenuItem
                         className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => handleEdit(database)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleEdit(database);
+                        }}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
@@ -266,11 +272,12 @@ export default function DatabasesPage() {
         </AlertDialog>
 
         <Dialog
-          open={!!databaseToEdit}
+          open={isEditDialogOpen}
           onOpenChange={(open) => {
             if (!open) {
               setDatabaseToEdit(null);
               setNewName("");
+              setIsEditDialogOpen(false);
             }
           }}
         >
@@ -306,6 +313,7 @@ export default function DatabasesPage() {
                 onClick={() => {
                   setDatabaseToEdit(null);
                   setNewName("");
+                  setIsEditDialogOpen(false);
                 }}
                 className="border border-gray-200 bg-white text-gray-900 hover:bg-gray-100"
               >
