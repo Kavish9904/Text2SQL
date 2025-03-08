@@ -11,6 +11,15 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
   },
+  // Add custom rewrites to handle the edit route
+  async rewrites() {
+    return [
+      {
+        source: "/databases/edit/:id",
+        destination: "/databases",
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

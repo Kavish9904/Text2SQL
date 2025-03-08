@@ -216,23 +216,28 @@ export default function DatabasesPage() {
                       align="end"
                       className="bg-white min-w-[160px]"
                     >
-                      <DropdownMenuItem
-                        className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        onSelect={(e) => {
+                      <button
+                        className="w-full flex items-center px-2 py-2 text-gray-900 hover:bg-gray-100 cursor-pointer"
+                        onClick={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           handleEdit(database);
                         }}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
-                        onSelect={() => setDatabaseToDelete(database.id)}
+                      </button>
+                      <button
+                        className="w-full flex items-center px-2 py-2 text-red-600 hover:bg-gray-100 cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDatabaseToDelete(database.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
-                      </DropdownMenuItem>
+                      </button>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
