@@ -55,43 +55,22 @@ export default function DatabasesPage() {
   const [databaseToEdit, setDatabaseToEdit] =
     useState<DatabaseConnection | null>(null);
   const [newName, setNewName] = useState("");
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
+    console.log("Current path:", window.location.pathname);
     try {
       const savedConnections = localStorage.getItem("databaseConnections");
+      console.log("Saved connections:", savedConnections);
       if (savedConnections) {
         const connections = JSON.parse(savedConnections);
         setDatabases(connections);
+        console.log("Loaded connections:", connections);
       }
     } catch (error) {
       console.error("Error loading connections:", error);
       setDatabases([]);
     }
   }, []);
-
-  const handleEdit = (database: DatabaseConnection) => {
-    setDatabaseToEdit(database);
-    setNewName(database.name);
-    setIsEditDialogOpen(true);
-  };
-
-  const confirmEdit = () => {
-    if (databaseToEdit && newName.trim()) {
-      const updatedDatabases = databases.map((db) =>
-        db.id === databaseToEdit.id ? { ...db, name: newName.trim() } : db
-      );
-      setDatabases(updatedDatabases);
-      localStorage.setItem(
-        "databaseConnections",
-        JSON.stringify(updatedDatabases)
-      );
-      setDatabaseToEdit(null);
-      setNewName("");
-      setIsEditDialogOpen(false);
-      toast.success("Database name updated");
-    }
-  };
 
   const confirmDelete = () => {
     if (databaseToDelete) {
@@ -107,6 +86,29 @@ export default function DatabasesPage() {
       toast.success("Database connection removed");
     }
   };
+
+  const handleEdit = (database: DatabaseConnection) => {
+    setDatabaseToEdit(database);
+    setNewName(database.name);
+  };
+
+  const confirmEdit = () => {
+    if (databaseToEdit && newName.trim()) {
+      const updatedDatabases = databases.map((db) =>
+        db.id === databaseToEdit.id ? { ...db, name: newName.trim() } : db
+      );
+      setDatabases(updatedDatabases);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(updatedDatabases)
+      );
+      setDatabaseToEdit(null);
+      setNewName("");
+      toast.success("Database name updated");
+    }
+  };
+
+  console.log("Current databases:", databases);
 
   const handleAddDatabase = () => {
     router.push("/connect");
@@ -220,7 +222,9 @@ export default function DatabasesPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => setDatabaseToDelete(database.id)}
+                        onClick={() => {
+                          setDatabaseToDelete(database.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
@@ -235,7 +239,7 @@ export default function DatabasesPage() {
 
         <AlertDialog
           open={!!databaseToDelete}
-          onOpenChange={(open) => !open && setDatabaseToDelete(null)}
+          onOpenChange={(open: boolean) => !open && setDatabaseToDelete(null)}
         >
           <AlertDialogContent className="bg-white">
             <AlertDialogHeader>
@@ -262,12 +266,11 @@ export default function DatabasesPage() {
         </AlertDialog>
 
         <Dialog
-          open={isEditDialogOpen}
+          open={!!databaseToEdit}
           onOpenChange={(open) => {
             if (!open) {
               setDatabaseToEdit(null);
               setNewName("");
-              setIsEditDialogOpen(false);
             }
           }}
         >
@@ -303,7 +306,6 @@ export default function DatabasesPage() {
                 onClick={() => {
                   setDatabaseToEdit(null);
                   setNewName("");
-                  setIsEditDialogOpen(false);
                 }}
                 className="border border-gray-200 bg-white text-gray-900 hover:bg-gray-100"
               >
