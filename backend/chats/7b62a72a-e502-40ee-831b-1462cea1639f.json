@@ -1,6 +1,55 @@
 {
   "id": "7b62a72a-e502-40ee-831b-1462cea1639f",
-  "messages": [],
+  "messages": [
+    {
+      "role": "user",
+      "content": "hey"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you with your database queries today?"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* list all columns"
+    },
+    {
+      "role": "assistant",
+      "content": "To list all columns from the `inventory` table, you can use the following SQL query:\n\n```sql\nSELECT * FROM inventory;\n```\n\nIf you need anything else, feel free to ask!"
+    },
+    {
+      "role": "user",
+      "content": "group them by item"
+    },
+    {
+      "role": "assistant",
+      "content": "To group the results by item in the `inventory` table, you can use the following SQL query:\n\n```sql\nSELECT * FROM inventory\nGROUP BY item;\n```\n\nIf you need to aggregate any specific columns, please let me know!"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* list all columns"
+    },
+    {
+      "role": "assistant",
+      "content": "To list all columns from the `inventory` table, you can use the following SQL query:\n\n```sql\nSELECT * FROM inventory;\n```\n\nIf you have any other requests or need further assistance, just let me know!"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* list all columns"
+    },
+    {
+      "role": "assistant",
+      "content": "To list all columns from the `inventory` table, you can use the following SQL query:\n\n```sql\nSELECT * FROM inventory;\n```\n\nIf you have any other questions or need further assistance, feel free to ask!"
+    },
+    {
+      "role": "user",
+      "content": "@inventory.* show columns"
+    },
+    {
+      "role": "assistant",
+      "content": "To show the columns of the `inventory` table, you can use the following SQL query:\n\n```sql\nSHOW COLUMNS FROM inventory;\n```\n\nIf you need further assistance or have more queries, just let me know!"
+    }
+  ],
   "createdAt": "2025-03-07T16:23:38.387Z",
-  "title": "New Chat"
+  "title": "hey"
 }

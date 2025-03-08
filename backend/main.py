@@ -321,12 +321,13 @@ async def chat(request: ChatRequest):
         print("References:", references)
         print("Commands:", commands)
         print("DATABASE CREDENTIALS:", database_credentials)
+        print("------------PROMPT------------")
         
         # Load OpenAI API key
         load_dotenv()
         api_key = os.getenv("OPENAI_APIKEY")
-        print(f"API Key loaded: {'Yes' if api_key else 'No'}")
-        print(f"API Key length: {len(api_key) if api_key else 'None'}")
+        # print(f"API Key loaded: {'Yes' if api_key else 'No'}")
+        # print(f"API Key length: {len(api_key) if api_key else 'None'}")
         
         if not api_key:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
@@ -335,7 +336,7 @@ async def chat(request: ChatRequest):
         chat_history = request.history
         
         try:
-            print("Initializing OpenAI client...")
+            # print("Initializing OpenAI client...")
             openai.api_key = api_key
             print("OpenAI client initialized successfully")
             
@@ -349,6 +350,7 @@ async def chat(request: ChatRequest):
                 # Fetch table information if we have references and credentials
                 try:
                     if database_credentials.get('type') == 'postgresql' or '.postgres.database.azure.com' in database_credentials.get('host', ''):
+                        print("Connecting to POSTGRESQL...")
                         conn = await asyncpg.connect(
                             user=database_credentials['username'],
                             password=database_credentials['password'],
@@ -371,16 +373,50 @@ async def chat(request: ChatRequest):
                             table_info += "\n"
                         await conn.close()
                         metadata_description = table_info if table_info else metadata_description
+                    
+                    elif database_credentials.get('type') == 'mysql' or '.mysql.database.azure.com' in database_credentials.get('host', ''):
+                        print("Connecting to MYSQL...")
+                        conn = mysql.connector.connect(
+                            host=database_credentials['host'],
+                            user=database_credentials['username'],
+                            password=database_credentials['password'],
+                            database=database_credentials['database'],
+                            port=database_credentials['port'],
+                            # ssl_ca='/etc/ssl/certs/ca-certificates.crt',
+                            # ssl_verify_cert=True
+                        )
+                        cursor = conn.cursor()
+                        # print("MySQL))))))")
+                        for reference in references:
+                            table_name = reference['table']
+                            cursor.execute("""
+                                SELECT COLUMN_NAME, DATA_TYPE
+                                FROM INFORMATION_SCHEMA.COLUMNS
+                                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+                            """, (database_credentials['database'], table_name))
+                        
+                            columns = cursor.fetchall()
+                            table_info += f"Table '{table_name}' has the following columns:\n"
+                            for col_name, data_type in columns:
+                                table_info += f"- {col_name} ({data_type})\n"
+                            table_info += "\n\n"
+                        
+                        cursor.close()
+                        conn.close()
+                        metadata_description = table_info if table_info else metadata_description
+                        # print("MySQL))))))")
+                        # return {"response": table_info}
+                    
                 except Exception as db_error:
                     print(f"Error fetching table metadata: {str(db_error)}")
                     # Continue with default metadata description
+            # print("METADATA DESCRIPTION:", metadata_description)
             
             prompt2 = f"""You are a helpful {DB_NAME} database agent that takes queries in natural language and converts it into a {DB_NAME} query. The database metadata is as follows- {metadata_description}.
                 You must interact with the user as a database ai agent and convert the relevant user queries to {DB_NAME} query."""
             task2 = f"User: {natural_language_query}"
             
-            print("Prompt:", prompt2)
-            print("Task:", task2)
+            print("Prompt:", prompt2+task2)
             print("--------------INSIDE------------------")
             
             messages = [
