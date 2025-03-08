@@ -23,8 +23,15 @@ export default function EditDatabaseContent({
   const [database, setDatabase] = useState<DatabaseConnection | null>(null);
   const [newName, setNewName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     // Load the database connection from localStorage
     try {
       const savedConnections = localStorage.getItem("databaseConnections");
@@ -48,7 +55,7 @@ export default function EditDatabaseContent({
     } finally {
       setIsLoading(false);
     }
-  }, [params.id, router]);
+  }, [params.id, router, isClient]);
 
   const handleSave = () => {
     if (!newName.trim()) {
@@ -76,6 +83,16 @@ export default function EditDatabaseContent({
       toast.error("Error saving database");
     }
   };
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
