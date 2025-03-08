@@ -216,28 +216,24 @@ export default function DatabasesPage() {
                       align="end"
                       className="bg-white min-w-[160px]"
                     >
-                      <button
-                        className="w-full flex items-center px-2 py-2 text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleEdit(database);
-                        }}
+                      <DropdownMenuItem
+                        className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
+                        asChild
                       >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </button>
-                      <button
-                        className="w-full flex items-center px-2 py-2 text-red-600 hover:bg-gray-100 cursor-pointer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setDatabaseToDelete(database.id);
-                        }}
+                        <div onClick={() => handleEdit(database)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
+                        asChild
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </button>
+                        <div onClick={() => setDatabaseToDelete(database.id)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </div>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
