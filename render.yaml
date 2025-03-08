@@ -40,9 +40,8 @@ services:
     name: frontend
     env: node
     rootDir: my-app
-    buildCommand: npm install; npm run build
-    startCommand: npm run start
-    publishDir: build
+    buildCommand: ./build.sh
+    startCommand: ./build/start.sh
     envVars:
       - key: NODE_ENV
         value: production
