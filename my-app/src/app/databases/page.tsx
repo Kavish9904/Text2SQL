@@ -218,7 +218,7 @@ export default function DatabasesPage() {
                     >
                       <DropdownMenuItem
                         className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        onClick={(e) => {
+                        onSelect={(e) => {
                           e.preventDefault();
                           handleEdit(database);
                         }}
@@ -228,9 +228,7 @@ export default function DatabasesPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          setDatabaseToDelete(database.id);
-                        }}
+                        onSelect={() => setDatabaseToDelete(database.id)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
@@ -245,7 +243,7 @@ export default function DatabasesPage() {
 
         <AlertDialog
           open={!!databaseToDelete}
-          onOpenChange={(open: boolean) => !open && setDatabaseToDelete(null)}
+          onOpenChange={(open) => !open && setDatabaseToDelete(null)}
         >
           <AlertDialogContent className="bg-white">
             <AlertDialogHeader>
