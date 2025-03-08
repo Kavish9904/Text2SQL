@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface DatabaseConnection {
@@ -43,6 +52,9 @@ export default function DatabasesPage() {
   const router = useRouter();
   const [databases, setDatabases] = useState<DatabaseConnection[]>([]);
   const [databaseToDelete, setDatabaseToDelete] = useState<string | null>(null);
+  const [databaseToEdit, setDatabaseToEdit] =
+    useState<DatabaseConnection | null>(null);
+  const [newName, setNewName] = useState("");
 
   useEffect(() => {
     console.log("Current path:", window.location.pathname);
@@ -72,6 +84,27 @@ export default function DatabasesPage() {
       );
       setDatabaseToDelete(null);
       toast.success("Database connection removed");
+    }
+  };
+
+  const handleEdit = (database: DatabaseConnection) => {
+    setDatabaseToEdit(database);
+    setNewName(database.name);
+  };
+
+  const confirmEdit = () => {
+    if (databaseToEdit && newName.trim()) {
+      const updatedDatabases = databases.map((db) =>
+        db.id === databaseToEdit.id ? { ...db, name: newName.trim() } : db
+      );
+      setDatabases(updatedDatabases);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(updatedDatabases)
+      );
+      setDatabaseToEdit(null);
+      setNewName("");
+      toast.success("Database name updated");
     }
   };
 
@@ -182,9 +215,7 @@ export default function DatabasesPage() {
                     >
                       <DropdownMenuItem
                         className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          router.push(`/databases/edit/${database.id}`);
-                        }}
+                        onClick={() => handleEdit(database)}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
@@ -233,6 +264,63 @@ export default function DatabasesPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog
+          open={!!databaseToEdit}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDatabaseToEdit(null);
+              setNewName("");
+            }
+          }}
+        >
+          <DialogContent className="bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-gray-900">
+                Edit Database Name
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Change the display name for this database connection.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label
+                  htmlFor="name"
+                  className="text-sm font-medium text-gray-900"
+                >
+                  Database Name
+                </label>
+                <Input
+                  id="name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Enter database name"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDatabaseToEdit(null);
+                  setNewName("");
+                }}
+                className="border border-gray-200 bg-white text-gray-900 hover:bg-gray-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmEdit}
+                className="bg-black text-white hover:bg-gray-800"
+                disabled={!newName.trim()}
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
