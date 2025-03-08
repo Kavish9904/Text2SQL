@@ -1,5 +1,3 @@
-"use client";
-
 import EditDatabaseContent from "./EditDatabaseContent";
 
 export default function EditDatabasePage({

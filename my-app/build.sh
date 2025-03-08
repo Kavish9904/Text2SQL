@@ -9,10 +9,8 @@ npm run build
 # Create build directory if it doesn't exist
 mkdir -p build
 
-# Copy the .next directory to build
+# Copy the .next directory and other necessary files
 cp -r .next build/
-
-# Copy package.json and other necessary files
 cp package.json build/
 cp package-lock.json build/
 cp next.config.js build/
