@@ -58,35 +58,17 @@ export default function DatabasesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
-    console.log("Current path:", window.location.pathname);
     try {
       const savedConnections = localStorage.getItem("databaseConnections");
-      console.log("Saved connections:", savedConnections);
       if (savedConnections) {
         const connections = JSON.parse(savedConnections);
         setDatabases(connections);
-        console.log("Loaded connections:", connections);
       }
     } catch (error) {
       console.error("Error loading connections:", error);
       setDatabases([]);
     }
   }, []);
-
-  const confirmDelete = () => {
-    if (databaseToDelete) {
-      const updatedDatabases = databases.filter(
-        (db) => db.id !== databaseToDelete
-      );
-      setDatabases(updatedDatabases);
-      localStorage.setItem(
-        "databaseConnections",
-        JSON.stringify(updatedDatabases)
-      );
-      setDatabaseToDelete(null);
-      toast.success("Database connection removed");
-    }
-  };
 
   const handleEdit = (database: DatabaseConnection) => {
     setDatabaseToEdit(database);
@@ -111,20 +93,23 @@ export default function DatabasesPage() {
     }
   };
 
-  console.log("Current databases:", databases);
+  const confirmDelete = () => {
+    if (databaseToDelete) {
+      const updatedDatabases = databases.filter(
+        (db) => db.id !== databaseToDelete
+      );
+      setDatabases(updatedDatabases);
+      localStorage.setItem(
+        "databaseConnections",
+        JSON.stringify(updatedDatabases)
+      );
+      setDatabaseToDelete(null);
+      toast.success("Database connection removed");
+    }
+  };
 
   const handleAddDatabase = () => {
     router.push("/connect");
-  };
-
-  const handleEditClick = (
-    e: React.MouseEvent,
-    database: DatabaseConnection
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleEdit(database);
-    return false;
   };
 
   if (databases.length === 0) {
@@ -227,28 +212,18 @@ export default function DatabasesPage() {
                       className="bg-white min-w-[160px]"
                     >
                       <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
                         className="flex items-center text-gray-900 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleEdit(database)}
                       >
-                        <button
-                          className="flex items-center w-full"
-                          onClick={(e) => handleEditClick(e, database)}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </button>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
                         className="flex items-center text-red-600 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => setDatabaseToDelete(database.id)}
                       >
-                        <button
-                          className="flex items-center w-full"
-                          onClick={() => setDatabaseToDelete(database.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </button>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
